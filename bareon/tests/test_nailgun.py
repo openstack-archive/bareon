@@ -385,29 +385,46 @@ LIST_BLOCK_DEVICES_SAMPLE = [
             'ra': '256', 'ro': '0', 'maxsect': '1024'},
         'size': 500107862016},
     {'uspec':
-        {
-            'DEVLINKS': [
-                '/dev/disk/by-id/ata-VBOX_HARDDISK_VB50ee61eb-84e74fdf',
-                '/dev/disk/by-id/scsi-SATA_VBOX_HARDDISK_VB50ee61eb-84e74fdf',
-                '/dev/disk/by-id/wwn-fake_wwn_3',
-                '/dev/disk/by-path/pci-0000:00:0d.0-scsi-0:0:0:0'],
-            'ID_SERIAL_SHORT': 'fake_serial_3',
-            'ID_WWN': 'fake_wwn_3',
-            'DEVPATH': '/devices/pci0000:00/0000:00:0d.0/ata4/host0/'
-                       'target0:0:0/'
-                       '0:0:0:0/block/sdc',
-            'ID_MODEL': 'fake_id_model',
-            'DEVNAME': '/dev/sdc',
-            'MAJOR': '8',
-            'DEVTYPE': 'disk', 'MINOR': '0', 'ID_BUS': 'ata'},
-        'startsec': '0',
-        'device': '/dev/sdc',
-        'espec': {'state': 'running', 'timeout': '30', 'removable': '0'},
-        'bspec': {
-            'sz': '976773168', 'iomin': '4096', 'size64': '500107862016',
-            'ss': '512', 'ioopt': '0', 'alignoff': '0', 'pbsz': '4096',
-            'ra': '256', 'ro': '0', 'maxsect': '1024'},
-        'size': 500107862016},
+        {'DEVLINKS': [
+            '/dev/disk/by-id/ata-VBOX_HARDDISK_VB50ee61eb-84e74fdf',
+            '/dev/disk/by-id/scsi-SATA_VBOX_HARDDISK_VB50ee61eb-84e74fdf',
+            '/dev/disk/by-id/wwn-fake_wwn_3',
+            '/dev/disk/by-path/pci-0000:00:0d.0-scsi-0:0:0:0'],
+         'ID_SERIAL_SHORT': 'fake_serial_3',
+         'ID_WWN': 'fake_wwn_3',
+         'DEVPATH': '/devices/pci0000:00/0000:00:0d.0/ata4/host0/target0:0:0/'
+                    '0:0:0:0/block/sdc',
+         'ID_MODEL': 'fake_id_model',
+         'DEVNAME': '/dev/sdc',
+         'MAJOR': '8',
+         'DEVTYPE': 'disk', 'MINOR': '0', 'ID_BUS': 'ata'},
+     'startsec': '0',
+     'device': '/dev/sdc',
+     'espec': {'state': 'running', 'timeout': '30', 'removable': '0'},
+     'bspec': {
+         'sz': '976773168', 'iomin': '4096', 'size64': '500107862016',
+         'ss': '512', 'ioopt': '0', 'alignoff': '0', 'pbsz': '4096',
+         'ra': '256', 'ro': '0', 'maxsect': '1024'},
+     'size': 500107862016},
+    {'uspec':
+        {'DEVLINKS': [
+            '/dev/disk/by-id/by-id/md-fake-raid-uuid',
+            ],
+         'ID_SERIAL_SHORT': 'fake_serial_raid',
+         'ID_WWN': 'fake_wwn_raid',
+         'DEVPATH': '/devices/virtual/block/md123',
+         'ID_MODEL': 'fake_raid',
+         'DEVNAME': '/dev/md123',
+         'MAJOR': '9',
+         'DEVTYPE': 'disk', 'MINOR': '123'},
+     'startsec': '0',
+     'device': '/dev/md123',
+     'espec': {'state': 'running', 'timeout': '30', 'removable': '0'},
+     'bspec': {
+         'sz': '976773168', 'iomin': '4096', 'size64': '500107862016',
+         'ss': '512', 'ioopt': '0', 'alignoff': '0', 'pbsz': '4096',
+         'ra': '256', 'ro': '0', 'maxsect': '1024'},
+     'size': 500107862016},
 ]
 
 LIST_BLOCK_DEVICES_SAMPLE_NVME = [
@@ -791,6 +808,116 @@ SINGLE_NVME_DISK_KS_SPACES = [
 ]
 
 
+FAKE_RAID_DISK_KS_SPACES = [
+    {
+        "name": "sda",
+        "extra": ["sda"],
+        "free_space": 1024,
+        "volumes": [
+            {
+                "type": "boot",
+                "size": 300
+            },
+            {
+                "mount": "/boot",
+                "size": 200,
+                "type": "raid",
+                "file_system": "ext2",
+                "name": "Boot"
+            },
+            {
+                "mount": "/var",
+                "size": 200,
+                "type": "partition",
+                "file_system": "ext4",
+                "name": "Var"
+            },
+        ],
+        "type": "disk",
+        "id": "sda",
+        "size": 2097153
+    },
+    {
+        "name": "sdb",
+        "extra": ["sdb"],
+        "free_space": 1024,
+        "volumes": [
+            {
+                "type": "boot",
+                "size": 300
+            },
+            {
+                "mount": "/boot",
+                "size": 200,
+                "type": "raid",
+                "file_system": "ext2",
+                "name": "Boot"
+            },
+            {
+                "mount": "/tmp",
+                "size": 200,
+                "type": "partition",
+                "file_system": "ext2",
+                "name": "TMP"
+            },
+        ],
+        "type": "disk",
+        "id": "sdb",
+        "size": 2097153
+    },
+    {
+        "name": "md123",
+        "extra": ["md123"],
+        "free_space": 1024,
+        "volumes": [
+            {
+                "type": "boot",
+                "size": 300
+            },
+            {
+                "mount": "/boot",
+                "size": 200,
+                "type": "raid",
+                "file_system": "ext2",
+                "name": "Boot"
+            },
+            {
+                "lvm_meta_size": 64,
+                "size": 271370,
+                "type": "pv",
+                "vg": "os"
+            },
+
+        ],
+        "type": "disk",
+        "id": "md123",
+        "size": 2097153
+    },
+    {
+        "id": "os",
+        "label": "Base System",
+        "min_size": 55296,
+        "type": "vg",
+        "volumes": [
+            {
+                "file_system": "ext4",
+                "mount": "/",
+                "name": "root",
+                "size": 267210,
+                "type": "lv"
+            },
+            {
+                "file_system": "swap",
+                "mount": "swap",
+                "name": "swap",
+                "size": 4096,
+                "type": "lv"
+            }
+        ],
+    },
+]
+
+
 class TestNailgunMatch(unittest2.TestCase):
     def test_match_device_by_id_matches(self):
         # matches by 'by-id' links
@@ -902,6 +1029,72 @@ class TestNailgunMatch(unittest2.TestCase):
             }
         }
         self.assertFalse(nailgun.match_device(fake_hu_disk, fake_ks_disk))
+
+
+class TestNailgunBootDisks(unittest2.TestCase):
+    class PropertyMock(mock.Mock):
+        def __get__(self, instance, owner):
+            return self()
+
+    nvme_disk = {
+        'name': 'nvmen1', 'size': 5,
+        'volumes': [{'type': 'raid', 'mount': '/boot', 'size': 1}],
+    }
+    disks = [
+        {'name': 'sda', 'size': 5,
+         'volumes': [{'type': 'partition', 'mount': '/boot',
+                     'size': 1}],
+         },
+        {'name': 'sdb', 'size': 5,
+         'volumes': [{'type': 'raid', 'mount': '/boot', 'size': 1}],
+         },
+    ]
+    big_disk = {
+        'name': '2big', 'size': 555555555,
+        'volumes': [{'type': 'raid', 'mount': '/boot', 'size': 1}],
+    }
+    fake_raid = {
+        'name': 'md123', 'size': 5,
+        'volumes': [{'type': 'raid', 'mount': '/boot', 'size': 1},
+                    {'type': 'pv', 'vg': 'os', 'size': 1}],
+    }
+    non_os_fake_raid = {
+        'name': 'md456', 'size': 5,
+        'volumes': [{'type': 'raid', 'mount': '/boot', 'size': 1},
+                    {'type': 'pv', 'vg': 'image', 'size': 1}],
+    }
+
+    def _check_boot_disks(self, ks_disks_return_value,
+                          not_expected_disk, expected_disks):
+        with mock.patch.object(nailgun.Nailgun, '__init__', return_value=None):
+            ks_disks = self.PropertyMock()
+            with mock.patch.object(nailgun.Nailgun, 'ks_disks', ks_disks):
+                drv = nailgun.Nailgun('fake_data')
+                ks_disks.return_value = ks_disks_return_value
+                self.assertNotIn(not_expected_disk, drv.boot_disks)
+                self.assertEqual(expected_disks, drv.boot_disks)
+
+    def test_md_boot_disk(self):
+        ks_disks_return_value = self.disks + [self.non_os_fake_raid] +\
+            [self.fake_raid]
+        not_expected_disk = self.non_os_fake_raid
+        expected_disks = [self.fake_raid]
+        self._check_boot_disks(ks_disks_return_value, not_expected_disk,
+                               expected_disks)
+
+    def test_only_small_boot_disks(self):
+        ks_disks_return_value = self.disks + [self.big_disk]
+        not_expected_disk = self.big_disk
+        expected_disks = self.disks
+        self._check_boot_disks(ks_disks_return_value, not_expected_disk,
+                               expected_disks)
+
+    def test_boot_disks_no_nvme(self):
+        ks_disks_return_value = self.disks + [self.nvme_disk]
+        not_expected_disk = self.nvme_disk
+        expected_disks = self.disks
+        self._check_boot_disks(ks_disks_return_value, not_expected_disk,
+                               expected_disks)
 
 
 @mock.patch.object(nailgun.Nailgun, '__init__', return_value=None)
@@ -1230,6 +1423,16 @@ class TestNailgunMockedMeta(unittest2.TestCase):
         self.assertEqual(
             drv.partition_scheme.fs_by_mount('/boot').device,
             '/dev/sda3')
+
+    def test_boot_partition_and_rootfs_on_fake_raid(self, mock_lbd,
+                                                    mock_image_meta):
+        data = copy.deepcopy(PROVISION_SAMPLE_DATA)
+        data['ks_meta']['pm_data']['ks_spaces'] = FAKE_RAID_DISK_KS_SPACES
+        mock_lbd.return_value = LIST_BLOCK_DEVICES_SAMPLE
+        drv = nailgun.Nailgun(data)
+        self.assertEqual(
+            drv.partition_scheme.fs_by_mount('/boot').device,
+            '/dev/md123p3')
 
     def test_boot_partition_no_boot(self, mock_lbd, mock_image_meta):
         data = copy.deepcopy(PROVISION_SAMPLE_DATA)
