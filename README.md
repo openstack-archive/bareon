@@ -1,5 +1,5 @@
-fuel-agent README
-=================
+Bareon
+======
 
 ## Table of Contents
 
@@ -12,7 +12,7 @@ fuel-agent README
 
 ## Overview
 
-fuel-agent is nothing more than just a set of data driven executable
+Bareon is nothing more than just a set of data driven executable
 scripts.
 - One of these scripts is used for building operating system images. One can run
 this script on wherever needed passing a set of repository URIs and a set of
@@ -60,7 +60,7 @@ operating system images and put these images on partitions.
 ### Basic Repository Layout
 
 ```
-fuel-agent
+bareon
 ├── cloud-init-templates
 ├── contrib
 ├── debian
@@ -95,8 +95,8 @@ This folder contains Jinja2 templates to prepare [cloud-init](https://cloudinit.
 
 ### contrib
 
-This directory contains third party code that is not a part of fuel-agent itself but
-can be used together with fuel-agent.
+This directory contains third party code that is not a part of bareon itself but
+can be used together with bareon.
 
 ### debian
 
@@ -105,7 +105,7 @@ Included debian rules are mainly suitable for Ubuntu 12.04 or higher.
 
 ### etc
 
-This folder contains the sample config file for fuel-agent. Every parameter is well documented.
+This folder contains the sample config file for bareon. Every parameter is well documented.
 We use oslo-config as a configuration module.
 
 ### fuel_agent
@@ -123,7 +123,7 @@ This folder contains the python code: drivers, objects, unit tests and utils, ma
       (Nailgun, NailgunBuildImage, Simple etc.)
       Data drivers convert json into a set of python objects.
 - fuel_agent/objects
-    * Here is the place where python objects are defined. fuel-agent manager
+    * Here is the place where python objects are defined. Bareon manager
       does not understand any particular data format except these objects.
       For example, to do disk partitioning we need PartitionScheme object.
       PartitionScheme object in turn contains disk labels, plain partitions,
@@ -143,12 +143,12 @@ Included RPM spec is mainly suitable for Centos 6.x or higher.
 
 ### Use case #1 (Fuel)
 
-fuel-agent is used in Fuel project as a part of operating system provisioning scheme.
+Bareon is used in Fuel project as a part of operating system provisioning scheme.
 When a user starts deployment of OpenStack cluster, the first task is to install
-an operating system on slave nodes. First, Fuel runs fuel-agent on the master node
-to build OS images. Once images are built, Fuel then runs fuel-agent on slave nodes
+an operating system on slave nodes. First, Fuel runs bareon on the master node
+to build OS images. Once images are built, Fuel then runs bareon on slave nodes
 using Mcollective. Slave nodes are supposed to be booted with so called bootstrap ramdisk.
-Bootstrap ramdisk is an in-memory OS where fuel-agent is installed.
+Bootstrap ramdisk is an in-memory OS where bareon is installed.
 
 Detailed documentation on this case is available here:
 * [Image based provisionig](https://docs.mirantis.com/openstack/fuel/fuel-master/reference-architecture.html#image-based-provisioning)
@@ -158,8 +158,8 @@ Detailed documentation on this case is available here:
 
 ### Use case #2 (Independent on Fuel)
 
-fuel-agent can easily be used in third party projects as a convenient operating system
-provisioning tool. As described above fuel-agent is fully data driven and supports
+Bareon can easily be used in third party projects as a convenient operating system
+provisioning tool. As described above bareon is fully data driven and supports
 various input data formats using pluggable input data drivers. Currently there are three
 input data drivers available. Those are
 
@@ -167,11 +167,11 @@ input data drivers available. Those are
   * Build image and provisioning input data drivers used in Fuel project. To use them
   independently read Fuel documentation.
 - NailgunSimpleDriver
-  * fuel-agent native partitioning input data driver. It is just a de-serializer for
-  fuel-agent PartitionScheme object.
+  * bareon native partitioning input data driver. It is just a de-serializer for
+  bareon PartitionScheme object.
 
 In order to be able to use another specific data format one can implement his own data
-driver and install it independently. fuel-agent uses stevedore to find installed drivers.
+driver and install it independently. Bareon uses stevedore to find installed drivers.
 A new driver needs to be exposed via fuel_agent.driver setuptools name space. See for example
 setup.cfg file where entry points are defined.
 
@@ -180,23 +180,21 @@ One can also take a look at ```contrib``` directory for some additional examples
 
 ### How to install
 
-fuel-agent can be installed either using RPM/DEB packages or using ```python setup.py install```.
+Bareon can be installed either using RPM/DEB packages or using ```python setup.py install```.
 
 
 ## Development
 
-fuel-agent currently is a subproject of Fuel project. So, we follow the same development
-practices as Fuel itself.
+Bareon currently follows openstack contribution guidelines.
 
-* [Fuel Development Documentation](https://docs.fuel-infra.org/fuel-dev/)
-* [Fuel How to Contribute](https://wiki.openstack.org/wiki/Fuel/How_to_contribute)
+* [OpenStack How to Contribute](https://wiki.openstack.org/wiki/How_To_Contribute)
 
 
 ## Core Reviewers
 
-* [fuel-agent cores](https://review.openstack.org/#/admin/groups/995,members)
+* [bareon cores](https://review.openstack.org/#/admin/groups/1208,members)
 
 
 ## Contributors
 
-* [Stackalytics](http://stackalytics.com/?release=all&project_type=all&module=fuel-agent&metric=commits)
+* [Stackalytics](http://stackalytics.com/?release=all&project_type=all&module=bareon&metric=commits)
