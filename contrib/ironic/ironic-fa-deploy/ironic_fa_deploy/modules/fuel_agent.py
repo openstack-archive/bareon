@@ -72,8 +72,8 @@ OTHER_PROPERTIES = {
     'fuel_key_filename': _('Name of SSH private key file; default is '
                            '"/etc/ironic/fuel_key". Optional.'),
     'fuel_ssh_port': _('SSH port; default is 22. Optional.'),
-    'fuel_deploy_script': _('path to Fuel Agent executable entry point; '
-                            'default is "provision" Optional.'),
+    'fuel_deploy_script': _('path to Bareon executable entry point; '
+                            'default is "bareon-provision" Optional.'),
 }
 COMMON_PROPERTIES = OTHER_PROPERTIES
 
@@ -119,7 +119,7 @@ def _parse_driver_info(node):
                  'driver_info:\n%s') % '\n'.join(error_msgs))
         raise exception.InvalidParameterValue(msg)
 
-    d_info['script'] = info.get('fuel_deploy_script', 'provision')
+    d_info['script'] = info.get('fuel_deploy_script', 'bareon-provision')
 
     return d_info
 
