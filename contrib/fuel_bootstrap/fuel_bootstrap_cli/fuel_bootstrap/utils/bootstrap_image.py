@@ -21,7 +21,7 @@ import tarfile
 import tempfile
 import yaml
 
-from fuel_agent.utils import utils
+from bareon.utils import utils
 
 from fuel_bootstrap import consts
 from fuel_bootstrap import errors

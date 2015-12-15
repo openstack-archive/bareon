@@ -114,7 +114,7 @@ export EVENTLET_NO_GREENDNS=yes
 
 OS_VARS=$(set | sed -n '/^OS_/s/=[^=]*$//gp' | xargs)
 [ "$OS_VARS" ] && eval "unset \$OS_VARS"
-DEFAULT_MODULEPATH=fuel_agent.openstack.common.config.generator
+DEFAULT_MODULEPATH=bareon.openstack.common.config.generator
 MODULEPATH=${MODULEPATH:-$DEFAULT_MODULEPATH}
 OUTPUTFILE=${OUTPUTFILE:-$OUTPUTDIR/$PACKAGENAME.conf.sample}
 python -m $MODULEPATH $MODULES $LIBRARIES $FILES > $OUTPUTFILE

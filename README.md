@@ -65,7 +65,7 @@ bareon
 ├── contrib
 ├── debian
 ├── etc
-├── fuel_agent
+├── bareon
 │   ├── cmd
 │   ├── drivers
 │   ├── objects
@@ -108,28 +108,28 @@ Included debian rules are mainly suitable for Ubuntu 12.04 or higher.
 This folder contains the sample config file for bareon. Every parameter is well documented.
 We use oslo-config as a configuration module.
 
-### fuel_agent
+### bareon
 
 This folder contains the python code: drivers, objects, unit tests and utils, manager and entry points.
 
-- fuel_agent/cmd/agent.py
+- bareon/cmd/agent.py
     * That is where executable entry points are. It reads input data and
       instantiates Manager class with these data.
-- fuel_agent/manager.py
+- bareon/manager.py
     * That is the file where the top level agent logic is implemented.
       It contains all those methods which do something useful (do_*)
-- fuel_agent/drivers
+- bareon/drivers
     * That is where input data drivers are located.
       (Nailgun, NailgunBuildImage, Simple etc.)
       Data drivers convert json into a set of python objects.
-- fuel_agent/objects
+- bareon/objects
     * Here is the place where python objects are defined. Bareon manager
       does not understand any particular data format except these objects.
       For example, to do disk partitioning we need PartitionScheme object.
       PartitionScheme object in turn contains disk labels, plain partitions,
       lvm, md, fs objects. This PartitionScheme object is to be created by input
       data driver.
-- fuel_agent/utils
+- bareon/utils
     * That is the place where we put the code which does something useful on the OS
       level. Here we have simple parted, lvm, md, grub bindings, etc.
 
@@ -172,7 +172,7 @@ input data drivers available. Those are
 
 In order to be able to use another specific data format one can implement his own data
 driver and install it independently. Bareon uses stevedore to find installed drivers.
-A new driver needs to be exposed via fuel_agent.driver setuptools name space. See for example
+A new driver needs to be exposed via bareon.driver setuptools name space. See for example
 setup.cfg file where entry points are defined.
 
 One can also take a look at ```contrib``` directory for some additional examples.
