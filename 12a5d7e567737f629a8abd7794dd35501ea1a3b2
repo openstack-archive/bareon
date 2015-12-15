@@ -1,0 +1,8 @@
+Verified+2: Jenkins
+Code-Review+2: Vladimir Kozhukalov <vkozhukalov@mirantis.com>
+Workflow+1: Vladimir Kozhukalov <vkozhukalov@mirantis.com>
+Submitted-by: Jenkins
+Submitted-at: Tue, 15 Dec 2015 10:52:04 +0000
+Reviewed-on: https://review.openstack.org/257487
+Project: openstack/bareon
+Branch: refs/heads/master
