@@ -155,9 +155,7 @@ class BuildCommand(command.Command):
             '--output-dir',
             type=str,
             metavar='DIR',
-            help="Which directory should contain built image. /tmp/"
-                 " is used by default.",
-            default="/tmp/"
+            help="Directory to store built image."
         )
         parser.add_argument(
             '--image-build-dir',
@@ -174,6 +172,13 @@ class BuildCommand(command.Command):
         parser.add_argument(
             '--notify-webui',
             help="Notify WebUI with result of command",
+            action='store_true'
+        )
+        parser.add_argument(
+            '--no-compress',
+            help="Do not compress bootstrap image to tar.gz. Bootstrap"
+                 " files will be stored in output dir. NOTE: Not compressed"
+                 " images are not supported by fuel-bootstrap.",
             action='store_true'
         )
         return parser
