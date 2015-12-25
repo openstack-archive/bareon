@@ -164,6 +164,12 @@ class Nailgun(BaseDataDriver,
             disk for disk in disks
             if ('nvme' not in disk['name'] and self._is_boot_disk(disk))
         ]
+        # NOTE(agordeev) sometimes, there's no separate /boot fs image.
+        # Therefore bootloader should be installed into
+        # the disk where rootfs image lands. Ironic's case.
+        if not suitable_disks and not self._have_boot_partition(disks):
+            return [d for d in disks
+                    if self._is_root_disk(d) and 'nvme' not in d['name']]
         # FIXME(agordeev): if we have rootfs on fake raid, then /boot should
         # land on it too. We can't proceed with grub-install otherwise.
         md_boot_disks = [
@@ -173,9 +179,17 @@ class Nailgun(BaseDataDriver,
         else:
             return suitable_disks
 
+    def _have_boot_partition(self, disks):
+        return any(self._is_boot_disk(d) for d in disks)
+
     def _is_boot_disk(self, disk):
         return any(v["type"] in ('partition', 'raid') and
                    v.get("mount") == "/boot"
+                   for v in disk["volumes"])
+
+    def _is_root_disk(self, disk):
+        return any(v["type"] in ('partition', 'raid') and
+                   v.get("mount") == "/"
                    for v in disk["volumes"])
 
     def _is_os_volume(self, vol):
@@ -484,9 +498,9 @@ class Nailgun(BaseDataDriver,
                           disk['name'])
                 parted.add_partition(size=20, configdrive=True)
 
-        # TODO(lobur): port https://review.openstack.org/#/c/261562/ to fix
-        # # checking if /boot is created
-        if not self._boot_partition_done or not self._boot_done:
+        # checking if /boot is expected to be created
+        if self._have_boot_partition(self.ks_disks) and \
+                (not self._boot_partition_done or not self._boot_done):
             raise errors.WrongPartitionSchemeError(
                 '/boot partition has not been created for some reasons')
 
@@ -657,6 +671,14 @@ class Nailgun(BaseDataDriver,
                 md5=imeta.get('raw_md5'),
             )
         return image_scheme
+
+
+class Ironic(Nailgun):
+    def __init__(self, data):
+        super(Ironic, self).__init__(data)
+
+    def parse_configdrive_scheme(self):
+        pass
 
 
 class NailgunBuildImage(BaseDataDriver,
