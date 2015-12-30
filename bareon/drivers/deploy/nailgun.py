@@ -401,6 +401,7 @@ class Manager(BaseDeployDriver):
         drop_data['os'] = metadata['os']
         drop_data['all_packages'] = metadata['all_packages']
         drop_data['repos'] = metadata['repos']
+        drop_data['label'] = bootstrap_scheme.label
 
         LOG.debug('Image metadata: %s', drop_data)
         with open(meta_file, 'wt') as f:

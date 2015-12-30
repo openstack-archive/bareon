@@ -82,7 +82,8 @@ class BootstrapDataBuilder(object):
                 'container': {
                     'meta_file': consts.METADATA_FILE,
                     'format': self.container_format
-                }
+                },
+                'label': self.label
             },
             'repos': self._get_repos(),
             'proxies': self._get_proxy_settings(),
