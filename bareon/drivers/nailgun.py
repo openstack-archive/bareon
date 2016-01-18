@@ -23,7 +23,8 @@ from six.moves.urllib.parse import urlparse
 from six.moves.urllib.parse import urlsplit
 import yaml
 
-from bareon.drivers.base import BaseDataDriver
+from bareon.drivers.base import BasePartitioningDataDriver
+from bareon.drivers.base import BaseProvisioningDataDriver
 from bareon.drivers import ks_spaces_validator
 from bareon import errors
 from bareon import objects
@@ -71,7 +72,7 @@ def match_device(hu_disk, ks_disk):
     return False
 
 
-class Nailgun(BaseDataDriver):
+class Nailgun(BasePartitioningDataDriver, BaseProvisioningDataDriver):
     """Driver for parsing regular volumes metadata from Nailgun."""
 
     def __init__(self, data):
@@ -624,7 +625,8 @@ class Ironic(Nailgun):
         return super(Ironic, self).parse_partition_scheme()
 
 
-class NailgunBuildImage(BaseDataDriver):
+class NailgunBuildImage(
+        BasePartitioningDataDriver, BaseProvisioningDataDriver):
 
     # TODO(kozhukalov):
     # This list of packages is used by default only if another

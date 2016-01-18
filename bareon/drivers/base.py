@@ -29,9 +29,15 @@ class BaseDataDriver(object):
     def __init__(self, data):
         self.data = copy.deepcopy(data)
 
+
+class BasePartitioningDataDriver(BaseDataDriver):
+
     @abc.abstractproperty
     def partition_scheme(self):
         """Retruns instance of PartionScheme object"""
+
+
+class BaseProvisioningDataDriver(BaseDataDriver):
 
     @abc.abstractproperty
     def image_scheme(self):
