@@ -29,22 +29,38 @@ class BaseDataDriver(object):
     def __init__(self, data):
         self.data = copy.deepcopy(data)
 
+
+@six.add_metaclass(abc.ABCMeta)
+class PartitioningDataDriverMixin(object):
+
     @abc.abstractproperty
     def partition_scheme(self):
         """Retruns instance of PartionScheme object"""
+
+
+@six.add_metaclass(abc.ABCMeta)
+class ProvisioningDataDriverMixin(object):
 
     @abc.abstractproperty
     def image_scheme(self):
         """Returns instance of ImageScheme object"""
 
     @abc.abstractproperty
-    def grub(self):
-        """Returns instance of Grub object"""
-
-    @abc.abstractproperty
     def operating_system(self):
         """Returns instance of OperatingSystem object"""
+
+
+@six.add_metaclass(abc.ABCMeta)
+class ConfigDriveDataDriverMixin(object):
 
     @abc.abstractproperty
     def configdrive_scheme(self):
         """Returns instance of ConfigDriveScheme object"""
+
+
+@six.add_metaclass(abc.ABCMeta)
+class GrubBootloaderDataDriverMixin(object):
+
+    @abc.abstractproperty
+    def grub(self):
+        """Returns instance of Grub object"""
