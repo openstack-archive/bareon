@@ -19,57 +19,17 @@ import signal
 
 from oslo_config import cfg
 import six
+import stevedore.named
 import yaml
 
 from bareon import errors
 from bareon import helpers
 from bareon.openstack.common import log as logging
-from bareon.utils import artifact as au
 from bareon.utils import build as bu
 from bareon.utils import fs as fu
-from bareon.utils import grub as gu
-from bareon.utils import hardware as hw
-from bareon.utils import lvm as lu
-from bareon.utils import md as mu
-from bareon.utils import partition as pu
 from bareon.utils import utils
 
 opts = [
-    cfg.StrOpt(
-        'nc_template_path',
-        default='/usr/share/bareon/cloud-init-templates',
-        help='Path to directory with cloud init templates',
-    ),
-    cfg.StrOpt(
-        'tmp_path',
-        default='/tmp',
-        help='Temporary directory for file manipulations',
-    ),
-    cfg.StrOpt(
-        'config_drive_path',
-        default='/tmp/config-drive.img',
-        help='Path where to store generated config drive image',
-    ),
-    cfg.StrOpt(
-        'udev_rules_dir',
-        default='/etc/udev/rules.d',
-        help='Path where to store actual rules for udev daemon',
-    ),
-    cfg.StrOpt(
-        'udev_rules_lib_dir',
-        default='/lib/udev/rules.d',
-        help='Path where to store default rules for udev daemon',
-    ),
-    cfg.StrOpt(
-        'udev_rename_substr',
-        default='.renamedrule',
-        help='Substring to which file extension .rules be renamed',
-    ),
-    cfg.StrOpt(
-        'udev_empty_rule',
-        default='empty_rule',
-        help='Correct empty rule for udev daemon',
-    ),
     cfg.StrOpt(
         'image_build_suffix',
         default='.bareon-image',
@@ -126,20 +86,9 @@ opts = [
         help='File where to store apt setting for forcing IPv4 usage'
     ),
     cfg.BoolOpt(
-        'prepare_configdrive',
-        default=True,
-        help='Create configdrive file, use pre-builded if set to False'
-    ),
-    cfg.BoolOpt(
         'fix_udev_net_rules',
         default=True,
         help='Add udev rules for NIC remapping'
-    ),
-    cfg.BoolOpt(
-        'skip_md_containers',
-        default=True,
-        help='Allow to skip MD containers (fake raid leftovers) while '
-             'cleaning the rest of MDs',
     ),
 ]
 
@@ -162,233 +111,19 @@ CONF.register_cli_opts(cli_opts)
 
 LOG = logging.getLogger(__name__)
 
+_DO_ACTIONS_NS = 'bareon.do_actions'
+
 
 class Manager(object):
     def __init__(self, data):
         self.driver = utils.get_driver(CONF.data_driver)(data)
+        self.ext_mgr = stevedore.named.NamedExtensionManager(
+            _DO_ACTIONS_NS, names=self.driver.flow, name_order=True)
 
-    def do_clean_filesystems(self):
-        # NOTE(agordeev): it turns out that only mkfs.xfs needs '-f' flag in
-        # order to force recreation of filesystem.
-        # This option will be added to mkfs.xfs call explicitly in fs utils.
-        # TODO(asvechnikov): need to refactor processing keep_flag logic when
-        # data model will become flat
-        for fs in self.driver.partition_scheme.fss:
-            found_images = [img for img in self.driver.image_scheme.images
-                            if img.target_device == fs.device]
-
-            if not fs.keep_data and not found_images:
-                fu.make_fs(fs.type, fs.options, fs.label, fs.device)
-
-    def do_partitioning(self):
-        LOG.debug('--- Partitioning disks (do_partitioning) ---')
-
-        if self.driver.partition_scheme.skip_partitioning:
-            LOG.debug('Some of fs has keep_data flag, '
-                      'partitioning is skiping')
-            self.do_clean_filesystems()
-            return
-
-        # If disks are not wiped out at all, it is likely they contain lvm
-        # and md metadata which will prevent re-creating a partition table
-        # with 'device is busy' error.
-        mu.mdclean_all(skip_containers=CONF.skip_md_containers)
-        lu.lvremove_all()
-        lu.vgremove_all()
-        lu.pvremove_all()
-
-        LOG.debug("Enabling udev's rules blacklisting")
-        utils.blacklist_udev_rules(udev_rules_dir=CONF.udev_rules_dir,
-                                   udev_rules_lib_dir=CONF.udev_rules_lib_dir,
-                                   udev_rename_substr=CONF.udev_rename_substr,
-                                   udev_empty_rule=CONF.udev_empty_rule)
-
-        for parted in self.driver.partition_scheme.parteds:
-            for prt in parted.partitions:
-                # We wipe out the beginning of every new partition
-                # right after creating it. It allows us to avoid possible
-                # interactive dialog if some data (metadata or file system)
-                # present on this new partition and it also allows udev not
-                # hanging trying to parse this data.
-                utils.execute('dd', 'if=/dev/zero', 'bs=1M',
-                              'seek=%s' % max(prt.begin - 3, 0), 'count=5',
-                              'of=%s' % prt.device, check_exit_code=[0])
-                # Also wipe out the ending of every new partition.
-                # Different versions of md stores metadata in different places.
-                # Adding exit code 1 to be accepted as for handling situation
-                # when 'no space left on device' occurs.
-                utils.execute('dd', 'if=/dev/zero', 'bs=1M',
-                              'seek=%s' % max(prt.end - 3, 0), 'count=5',
-                              'of=%s' % prt.device, check_exit_code=[0, 1])
-
-        for parted in self.driver.partition_scheme.parteds:
-            pu.make_label(parted.name, parted.label)
-            for prt in parted.partitions:
-                pu.make_partition(prt.device, prt.begin, prt.end, prt.type)
-                for flag in prt.flags:
-                    pu.set_partition_flag(prt.device, prt.count, flag)
-                if prt.guid:
-                    pu.set_gpt_type(prt.device, prt.count, prt.guid)
-                # If any partition to be created doesn't exist it's an error.
-                # Probably it's again 'device or resource busy' issue.
-                if not os.path.exists(prt.name):
-                    raise errors.PartitionNotFoundError(
-                        'Partition %s not found after creation' % prt.name)
-
-        LOG.debug("Disabling udev's rules blacklisting")
-        utils.unblacklist_udev_rules(
-            udev_rules_dir=CONF.udev_rules_dir,
-            udev_rename_substr=CONF.udev_rename_substr)
-
-        # If one creates partitions with the same boundaries as last time,
-        # there might be md and lvm metadata on those partitions. To prevent
-        # failing of creating md and lvm devices we need to make sure
-        # unused metadata are wiped out.
-        mu.mdclean_all(skip_containers=CONF.skip_md_containers)
-        lu.lvremove_all()
-        lu.vgremove_all()
-        lu.pvremove_all()
-
-        # creating meta disks
-        for md in self.driver.partition_scheme.mds:
-            mu.mdcreate(md.name, md.level, md.devices, md.metadata)
-
-        # creating physical volumes
-        for pv in self.driver.partition_scheme.pvs:
-            lu.pvcreate(pv.name, metadatasize=pv.metadatasize,
-                        metadatacopies=pv.metadatacopies)
-
-        # creating volume groups
-        for vg in self.driver.partition_scheme.vgs:
-            lu.vgcreate(vg.name, *vg.pvnames)
-
-        # creating logical volumes
-        for lv in self.driver.partition_scheme.lvs:
-            lu.lvcreate(lv.vgname, lv.name, lv.size)
-
-        # making file systems
-        for fs in self.driver.partition_scheme.fss:
-            found_images = [img for img in self.driver.image_scheme.images
-                            if img.target_device == fs.device]
-            if not found_images:
-                fu.make_fs(fs.type, fs.options, fs.label, fs.device)
-
-    def do_configdrive(self):
-        LOG.debug('--- Creating configdrive (do_configdrive) ---')
-        if CONF.prepare_configdrive:
-            cc_output_path = os.path.join(CONF.tmp_path, 'cloud_config.txt')
-            bh_output_path = os.path.join(CONF.tmp_path, 'boothook.txt')
-            # NOTE:file should be strictly named as 'user-data'
-            #      the same is for meta-data as well
-            ud_output_path = os.path.join(CONF.tmp_path, 'user-data')
-            md_output_path = os.path.join(CONF.tmp_path, 'meta-data')
-
-            tmpl_dir = CONF.nc_template_path
-            utils.render_and_save(
-                tmpl_dir,
-                self.driver.configdrive_scheme.template_names('cloud_config'),
-                self.driver.configdrive_scheme.template_data(),
-                cc_output_path
-            )
-            utils.render_and_save(
-                tmpl_dir,
-                self.driver.configdrive_scheme.template_names('boothook'),
-                self.driver.configdrive_scheme.template_data(),
-                bh_output_path
-            )
-            utils.render_and_save(
-                tmpl_dir,
-                self.driver.configdrive_scheme.template_names('meta_data'),
-                self.driver.configdrive_scheme.template_data(),
-                md_output_path
-            )
-
-            utils.execute(
-                'write-mime-multipart', '--output=%s' % ud_output_path,
-                '%s:text/cloud-boothook' % bh_output_path,
-                '%s:text/cloud-config' % cc_output_path)
-            utils.execute('genisoimage', '-output', CONF.config_drive_path,
-                          '-volid', 'cidata', '-joliet', '-rock',
-                          ud_output_path, md_output_path)
-
-        if CONF.prepare_configdrive or os.path.isfile(CONF.config_drive_path):
-            self._add_configdrive_image()
-
-    def _add_configdrive_image(self):
-        configdrive_device = self.driver.partition_scheme.configdrive_device()
-        if configdrive_device is None:
-            raise errors.WrongPartitionSchemeError(
-                'Error while trying to get configdrive device: '
-                'configdrive device not found')
-        size = os.path.getsize(CONF.config_drive_path)
-        md5 = utils.calculate_md5(CONF.config_drive_path, size)
-        self.driver.image_scheme.add_image(
-            uri='file://%s' % CONF.config_drive_path,
-            target_device=configdrive_device,
-            format='iso9660',
-            container='raw',
-            size=size,
-            md5=md5,
-        )
-
-    def do_copyimage(self):
-        LOG.debug('--- Copying images (do_copyimage) ---')
-        for image in self.driver.image_scheme.images:
-            LOG.debug('Processing image: %s' % image.uri)
-            processing = au.Chain()
-
-            LOG.debug('Appending uri processor: %s' % image.uri)
-            processing.append(image.uri)
-
-            if image.uri.startswith('http://'):
-                LOG.debug('Appending HTTP processor')
-                processing.append(au.HttpUrl)
-            elif image.uri.startswith('file://'):
-                LOG.debug('Appending FILE processor')
-                processing.append(au.LocalFile)
-
-            if image.container == 'gzip':
-                LOG.debug('Appending GZIP processor')
-                processing.append(au.GunzipStream)
-
-            LOG.debug('Appending TARGET processor: %s' % image.target_device)
-
-            error = None
-            if not os.path.exists(image.target_device):
-                error = "TARGET processor '{0}' does not exist."
-            elif not hw.is_block_device(image.target_device):
-                error = "TARGET processor '{0}' is not a block device."
-            if error:
-                error = error.format(image.target_device)
-                LOG.error(error)
-                raise errors.WrongDeviceError(error)
-
-            processing.append(image.target_device)
-
-            LOG.debug('Launching image processing chain')
-            processing.process()
-
-            if image.size and image.md5:
-                LOG.debug('Trying to compare image checksum')
-                actual_md5 = utils.calculate_md5(image.target_device,
-                                                 image.size)
-                if actual_md5 == image.md5:
-                    LOG.debug('Checksum matches successfully: md5=%s' %
-                              actual_md5)
-                else:
-                    raise errors.ImageChecksumMismatchError(
-                        'Actual checksum %s mismatches with expected %s for '
-                        'file %s' % (actual_md5, image.md5,
-                                     image.target_device))
-            else:
-                LOG.debug('Skipping image checksum comparing. '
-                          'Ether size or hash have been missed')
-
-            LOG.debug('Extending image file systems')
-            if image.format in ('ext2', 'ext3', 'ext4', 'xfs'):
-                LOG.debug('Extending %s %s' %
-                          (image.format, image.target_device))
-                fu.extend_fs(image.format, image.target_device)
+    def do_actions(self):
+        for action in self.ext_mgr:
+            action.plugin.validate()
+            action.plugin.execute()
 
     @staticmethod
     def _update_metadata_with_repos(metadata, repos):
@@ -609,136 +344,13 @@ class Manager(object):
         with open(meta_file, 'wt') as f:
             yaml.safe_dump(drop_data, stream=f, encoding='utf-8')
 
-    def do_bootloader(self):
-        LOG.debug('--- Installing bootloader (do_bootloader) ---')
-        chroot = '/tmp/target'
-        helpers.mount_target(self.driver, chroot)
-        fu.mount_bind_pseudo_fss(chroot)
-        utils.treat_mtab(chroot)
-
-        mount2uuid = {}
-        for fs in self.driver.partition_scheme.fss:
-            mount2uuid[fs.mount] = utils.execute(
-                'blkid', '-o', 'value', '-s', 'UUID', fs.device,
-                check_exit_code=[0])[0].strip()
-
-        if '/' not in mount2uuid:
-            raise errors.WrongPartitionSchemeError(
-                'Error: device with / mountpoint has not been found')
-
-        grub = self.driver.grub
-
-        guessed_version = gu.guess_grub_version(chroot=chroot)
-        if guessed_version != grub.version:
-            grub.version = guessed_version
-            LOG.warning('Grub version differs from which the operating system '
-                        'should have by default. Found version in image: '
-                        '{0}'.format(guessed_version))
-        boot_device = self.driver.partition_scheme.boot_device(grub.version)
-        install_devices = [d.name for d in self.driver.partition_scheme.parteds
-                           if d.install_bootloader]
-
-        grub.append_kernel_params('root=UUID=%s ' % mount2uuid['/'])
-
-        kernel = grub.kernel_name or gu.guess_kernel(chroot=chroot,
-                                                     regexp=grub.kernel_regexp)
-
-        initrd = grub.initrd_name or gu.guess_initrd(chroot=chroot,
-                                                     regexp=grub.initrd_regexp)
-
-        if grub.version == 1:
-            gu.grub1_cfg(kernel=kernel, initrd=initrd,
-                         kernel_params=grub.kernel_params, chroot=chroot,
-                         grub_timeout=CONF.grub_timeout)
-            gu.grub1_install(install_devices, boot_device, chroot=chroot)
-        else:
-            # TODO(kozhukalov): implement which kernel to use by default
-            # Currently only grub1_cfg accepts kernel and initrd parameters.
-            gu.grub2_cfg(kernel_params=grub.kernel_params, chroot=chroot,
-                         grub_timeout=CONF.grub_timeout)
-            gu.grub2_install(install_devices, chroot=chroot)
-
-        if CONF.fix_udev_net_rules:
-            # FIXME(agordeev) There's no convenient way to perfrom NIC
-            # remapping in Ubuntu, so injecting files prior the first boot
-            # should work
-            with open(chroot + '/etc/udev/rules.d/70-persistent-net.rules',
-                      'wt', encoding='utf-8') as f:
-                f.write(u'# Generated by bareon during provisioning: '
-                        u'BEGIN\n')
-                # pattern is aa:bb:cc:dd:ee:ff_eth0,aa:bb:cc:dd:ee:ff_eth1
-                for mapping in self.driver.configdrive_scheme. \
-                        common.udevrules.split(','):
-                    mac_addr, nic_name = mapping.split('_')
-                    f.write(u'SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", '
-                            u'ATTR{address}=="%s", ATTR{type}=="1", '
-                            u'KERNEL=="eth*", NAME="%s"\n' % (mac_addr,
-                                                              nic_name))
-                f.write(
-                    u'# Generated by bareon during provisioning: END\n')
-            # FIXME(agordeev): Disable net-generator that will add new etries
-            # to 70-persistent-net.rules
-            with open(chroot + '/etc/udev/rules.d/'
-                               '75-persistent-net-generator.rules', 'wt',
-                      encoding='utf-8') as f:
-                f.write(u'# Generated by bareon during provisioning:\n'
-                        u'# DO NOT DELETE. It is needed to disable '
-                        u'net-generator\n')
-
-        # FIXME(kozhukalov): Prevent nailgun-agent from doing anything.
-        # This ugly hack is to be used together with the command removing
-        # this lock file not earlier than /etc/rc.local
-        # The reason for this hack to appear is to prevent nailgun-agent from
-        # changing mcollective config at the same time when cloud-init
-        # does the same. Otherwise, we can end up with corrupted mcollective
-        # config. For details see https://bugs.launchpad.net/fuel/+bug/1449186
-        LOG.debug('Preventing nailgun-agent from doing '
-                  'anything until it is unlocked')
-        utils.makedirs_if_not_exists(os.path.join(chroot, 'etc/nailgun-agent'))
-        with open(os.path.join(chroot, 'etc/nailgun-agent/nodiscover'), 'w'):
-            pass
-
-        # FIXME(kozhukalov): When we have just os-root fs image and don't have
-        # os-var-log fs image while / and /var/log are supposed to be
-        # separate file systems and os-var-log is mounted into
-        # non-empty directory on the / file system, those files in /var/log
-        # directory become unavailable.
-        # The thing is that among those file there is /var/log/upstart
-        # where upstart daemon writes its logs. We have specific upstart job
-        # which is to flush open files once all file systems are mounted.
-        # This job needs upstart directory to be available on os-var-log
-        # file system.
-        # This is just a temporary fix and correct fix will be available soon
-        # via updates.
-        utils.execute('mkdir', '-p', chroot + '/var/log/upstart')
-
-        with open(chroot + '/etc/fstab', 'wt', encoding='utf-8') as f:
-            for fs in self.driver.partition_scheme.fss:
-                # TODO(kozhukalov): Think of improving the logic so as to
-                # insert a meaningful fsck order value which is last zero
-                # at fstab line. Currently we set it into 0 which means
-                # a corresponding file system will never be checked. We assume
-                # puppet or other configuration tool will care of it.
-                if fs.mount == '/':
-                    f.write(u'UUID=%s %s %s defaults,errors=panic 0 0\n' %
-                            (mount2uuid[fs.mount], fs.mount, fs.type))
-                else:
-                    f.write(u'UUID=%s %s %s defaults 0 0\n' %
-                            (mount2uuid[fs.mount], fs.mount, fs.type))
-
-        fu.umount_pseudo_fss(chroot)
-        helpers.umount_target(self.driver, chroot)
-
     def do_reboot(self):
         LOG.debug('--- Rebooting node (do_reboot) ---')
         utils.execute('reboot')
 
     def do_provisioning(self):
         LOG.debug('--- Provisioning (do_provisioning) ---')
-        self.do_partitioning()
-        self.do_configdrive()
-        self.do_copyimage()
-        self.do_bootloader()
+        self.do_actions()
         LOG.debug('--- Provisioning END (do_provisioning) ---')
 
     def do_mkbootstrap(self):

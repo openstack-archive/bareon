@@ -28,6 +28,7 @@ class BaseDataDriver(object):
 
     def __init__(self, data):
         self.data = copy.deepcopy(data)
+        self.flow = self.flow or self.data.get('flow')
 
 
 @six.add_metaclass(abc.ABCMeta)

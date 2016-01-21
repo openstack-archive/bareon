@@ -39,8 +39,8 @@ from bareon.utils import utils
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.import_opt('prepare_configdrive', 'bareon.manager')
-CONF.import_opt('config_drive_path', 'bareon.manager')
+CONF.import_opt('prepare_configdrive', 'bareon.actions.configdrive')
+CONF.import_opt('config_drive_path', 'bareon.actions.configdrive')
 
 
 def match_device(hu_disk, ks_disk):
@@ -81,6 +81,12 @@ class Nailgun(BaseDataDriver,
               ConfigDriveDataDriverMixin,
               GrubBootloaderDataDriverMixin):
     """Driver for parsing regular volumes metadata from Nailgun."""
+
+    flow = [
+        'do_partitioning',
+        'do_configdrive',
+        'do_copyimage',
+        'do_bootloader']
 
     def __init__(self, data):
         super(Nailgun, self).__init__(data)
