@@ -39,8 +39,8 @@ from bareon.utils import utils
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.import_opt('prepare_configdrive', 'bareon.manager')
-CONF.import_opt('config_drive_path', 'bareon.manager')
+CONF.import_opt('prepare_configdrive', 'bareon.actions.configdrive')
+CONF.import_opt('config_drive_path', 'bareon.actions.configdrive')
 
 
 def match_device(hu_disk, ks_disk):
@@ -84,6 +84,11 @@ class Nailgun(BaseDataDriver,
 
     def __init__(self, data):
         super(Nailgun, self).__init__(data)
+        self.flow = [
+            'do_partitioning',
+            'do_configdrive',
+            'do_copyimage',
+            'do_bootloader']
 
         # this var states whether boot partition
         # was already allocated on first matching volume
