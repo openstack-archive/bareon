@@ -16,6 +16,7 @@
 
 import logging
 import os
+import re
 import shutil
 import tarfile
 import tempfile
@@ -45,6 +46,28 @@ def get_all():
         except errors.IncorrectImage as e:
             LOG.debug("Image [%s] is skipped due to %s", name, e)
     return data
+
+
+def _cobbler_profile():
+    """Parse current active profile from cobbler system
+
+    :return: string
+    """
+
+    stdout, _ = utils.execute('cobbler', 'system', 'report',
+                              '--name', 'default')
+    regex = r"(?P<label>Profile)\s*:\s*(?P<profile>[^\s]+)"
+    return re.search(regex, stdout).group('profile')
+
+
+def get_centos_data():
+    """Return info about centos image
+
+    :return: dict
+    """
+    return {'uuid': 'centos',
+            'label': 'deprecated',
+            'status': ACTIVE if 'ubuntu' not in _cobbler_profile() else ''}
 
 
 def parse(image_uuid):
@@ -177,21 +200,19 @@ def _update_astute_yaml(flavor=None):
         raise
 
 
-def _run_puppet(container=None, manifest=None):
-    """Run puppet apply inside docker container
+def _run_puppet(manifest=None):
+    """Run puppet apply
 
-    :param container:
     :param manifest:
     :return:
     """
-    LOG.debug('Trying apply manifest:%s \ninside container:%s',
-              manifest, container)
-    utils.execute('dockerctl', 'shell', container, 'puppet', 'apply',
-                  '--detailed-exitcodes', '-dv', manifest, logged=True,
+    LOG.debug('Trying apply manifest: %s', manifest)
+    utils.execute('puppet', 'apply', '--detailed-exitcodes',
+                  '-dv', manifest, logged=True,
                   check_exit_code=[0, 2], attempts=2)
 
 
-def _activate_dockerized(flavor=None):
+def _activate_flavor(flavor=None):
     """Switch between cobbler distro profiles, in case dockerized system
 
     Unfortunately, we don't support switching between profiles "on fly",
@@ -200,7 +221,6 @@ def _activate_dockerized(flavor=None):
     2) Re-run puppet for cobbler(to perform default system update, regarding
        new profile)
     3) Re-run puppet for astute
-    4) Restart astuted service in container
 
     :param flavor: Switch between ubuntu\centos cobbler profile
     :return:
@@ -211,12 +231,11 @@ def _activate_dockerized(flavor=None):
             'Wrong cobbler profile passed:%s \n possible profiles:',
             flavor, consts.DISTROS.keys())
     _update_astute_yaml(consts.DISTROS[flavor]['astute_flavor'])
-    _run_puppet(consts.COBBLER_DOCKER, consts.COBBLER_MANIFEST)
-    _run_puppet(consts.ASTUTE_DOCKER, consts.ASTUTE_MANIFEST)
+    _run_puppet(consts.COBBLER_MANIFEST)
+    _run_puppet(consts.ASTUTE_MANIFEST)
     # restart astuted to be sure that it catches new profile
     LOG.debug('Reloading astuted')
-    utils.execute('dockerctl', 'shell', 'astute', 'service', 'astute',
-                  'restart')
+    utils.execute('service', 'astute', 'restart')
 
 
 def activate(image_uuid=""):
@@ -238,7 +257,7 @@ def activate(image_uuid=""):
 
     # FIXME: Add pre-activate verify
     flavor = 'centos' if is_centos else 'ubuntu'
-    _activate_dockerized(flavor)
+    _activate_flavor(flavor)
 
     return image_uuid
 
