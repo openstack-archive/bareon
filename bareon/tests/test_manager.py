@@ -65,10 +65,10 @@ class TestManager(unittest2.TestCase):
                 create=True, new_callable=mock.mock_open)
     @mock.patch('bareon.manager.gu', create=True)
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
-    def test_do_bootloader_grub1_kernel_initrd_guessed(self, mock_umount,
-                                                       mock_mount, mock_utils,
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_bootloader_grub1_kernel_initrd_guessed(self, mock_helpers,
+                                                       mock_fu, mock_utils,
                                                        mock_gu, mock_open):
         mock_utils.execute.return_value = ('', '')
         mock_gu.guess_grub_version.return_value = 1
@@ -99,10 +99,10 @@ class TestManager(unittest2.TestCase):
                 create=True, new_callable=mock.mock_open)
     @mock.patch('bareon.manager.gu', create=True)
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
-    def test_do_bootloader_grub1_kernel_initrd_set(self, mock_umount,
-                                                   mock_mount, mock_utils,
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_bootloader_grub1_kernel_initrd_set(self, mock_helpers,
+                                                   mock_fu, mock_utils,
                                                    mock_gu, mock_open):
         mock_utils.execute.return_value = ('', '')
         mock_gu.guess_grub_version.return_value = 1
@@ -128,9 +128,9 @@ class TestManager(unittest2.TestCase):
                 create=True, new_callable=mock.mock_open)
     @mock.patch('bareon.manager.gu', create=True)
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
-    def test_do_bootloader_rootfs_uuid(self, mock_umount, mock_mount,
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_bootloader_rootfs_uuid(self, mock_helpers, mock_fu,
                                        mock_utils, mock_gu, mock_open,
                                        mock_grub):
         def _fake_uuid(*args, **kwargs):
@@ -151,8 +151,10 @@ class TestManager(unittest2.TestCase):
         self.assertEqual(2, mock_grub.version)
 
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    def test_do_bootloader_rootfs_not_found(self, mock_umount, mock_utils):
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_bootloader_rootfs_not_found(self, mock_helpers, mock_fu,
+                                            mock_utils):
         mock_utils.execute.return_value = ('fake', 'fake')
         self.mgr.driver._partition_scheme = objects.PartitionScheme()
         self.mgr.driver.partition_scheme.add_fs(
@@ -166,10 +168,10 @@ class TestManager(unittest2.TestCase):
                 create=True, new_callable=mock.mock_open)
     @mock.patch('bareon.manager.gu', create=True)
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
     def test_do_bootloader_grub_version_changes(
-            self, mock_umount, mock_mount, mock_utils, mock_gu, mock_open):
+            self, mock_helpers, mock_fu, mock_utils, mock_gu, mock_open):
         # actually covers only grub1 related logic
         mock_utils.execute.return_value = ('fake_UUID\n', None)
         mock_gu.guess_grub_version.return_value = 'expected_version'
@@ -182,9 +184,9 @@ class TestManager(unittest2.TestCase):
                 create=True, new_callable=mock.mock_open)
     @mock.patch('bareon.manager.gu', create=True)
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
-    def test_do_bootloader_grub1(self, mock_umount, mock_mount, mock_utils,
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_bootloader_grub1(self, mock_helpers, mock_fu, mock_utils,
                                  mock_gu, mock_open):
         # actually covers only grub1 related logic
         mock_utils.execute.return_value = ('fake_UUID\n', None)
@@ -211,9 +213,9 @@ class TestManager(unittest2.TestCase):
                 create=True, new_callable=mock.mock_open)
     @mock.patch('bareon.manager.gu', create=True)
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
-    def test_do_bootloader_grub2(self, mock_umount, mock_mount, mock_utils,
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_bootloader_grub2(self, mock_helpers, mock_fu, mock_utils,
                                  mock_gu, mock_open):
         # actually covers only grub2 related logic
         mock_utils.execute.return_value = ('fake_UUID\n', None)
@@ -233,9 +235,9 @@ class TestManager(unittest2.TestCase):
 
     @mock.patch('bareon.manager.gu', create=True)
     @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
-    def test_do_bootloader_writes(self, mock_umount, mock_mount, mock_utils,
+    @mock.patch('bareon.manager.fu', create=True)
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_bootloader_writes(self, mock_helpers, mock_fu, mock_utils,
                                   mock_gu):
         # actually covers only write() calls
         mock_utils.execute.return_value = ('fake_UUID\n', None)
@@ -276,10 +278,15 @@ class TestManager(unittest2.TestCase):
             ]
             self.assertEqual(expected_write_calls,
                              file_handle_mock.write.call_args_list)
-        mock_umount.assert_called_once_with('/tmp/target')
-        mock_mount.assert_called_once_with('/tmp/target')
+        mock_helpers.mount_target.assert_called_once_with(self.mgr.driver,
+                                                          '/tmp/target')
+        mock_fu.mount_bind_pseudo_fss.assert_called_once_with('/tmp/target')
+        mock_utils.treat_mtab.assert_called_once_with('/tmp/target')
         mock_utils.makedirs_if_not_exists.assert_called_once_with(
             '/tmp/target/etc/nailgun-agent')
+        mock_fu.umount_pseudo_fss.assert_called_once_with('/tmp/target')
+        mock_helpers.umount_target.assert_called_once_with(self.mgr.driver,
+                                                           '/tmp/target')
 
     @mock.patch('bareon.drivers.nailgun.Nailgun.parse_image_meta',
                 return_value={})
@@ -676,101 +683,6 @@ class TestManager(unittest2.TestCase):
         self.assertRaises(errors.ImageChecksumMismatchError,
                           self.mgr.do_copyimage)
 
-    @mock.patch('bareon.manager.fu', create=True)
-    @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch('bareon.manager.open',
-                create=True, new_callable=mock.mock_open)
-    @mock.patch('bareon.manager.os', create=True)
-    def test_mount_target_mtab_is_link(self, mock_os, mock_open, mock_utils,
-                                       mock_fu):
-        mock_os.path.islink.return_value = True
-        mock_utils.execute.return_value = (None, None)
-        self.mgr.driver._partition_scheme = objects.PartitionScheme()
-        self.mgr.mount_target('fake_chroot')
-        mock_open.assert_called_once_with('fake_chroot/etc/mtab', 'wt',
-                                          encoding='utf-8')
-        mock_os.path.islink.assert_called_once_with('fake_chroot/etc/mtab')
-        mock_os.remove.assert_called_once_with('fake_chroot/etc/mtab')
-
-    @mock.patch('bareon.manager.fu', create=True)
-    @mock.patch('bareon.manager.utils', create=True)
-    @mock.patch('bareon.manager.open',
-                create=True, new_callable=mock.mock_open)
-    @mock.patch('bareon.manager.os', create=True)
-    def test_mount_target(self, mock_os, mock_open, mock_utils, mock_fu):
-        mock_os.path.islink.return_value = False
-        self.mgr.driver._partition_scheme = objects.PartitionScheme()
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/var/lib', fs_type='xfs')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/', fs_type='ext4')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/boot', fs_type='ext2')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='swap', fs_type='swap')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/var', fs_type='ext4')
-        fake_mtab = """
-proc /proc proc rw,noexec,nosuid,nodev 0 0
-sysfs /sys sysfs rw,noexec,nosuid,nodev 0 0
-none /sys/fs/fuse/connections fusectl rw 0 0
-none /sys/kernel/debug debugfs rw 0 0
-none /sys/kernel/security securityfs rw 0 0
-udev /dev devtmpfs rw,mode=0755 0 0
-devpts /dev/pts devpts rw,noexec,nosuid,gid=5,mode=0620 0 0
-tmpfs /run tmpfs rw,noexec,nosuid,size=10%,mode=0755 0 0
-none /run/lock tmpfs rw,noexec,nosuid,nodev,size=5242880 0 0
-none /run/shm tmpfs rw,nosuid,nodev 0 0"""
-        mock_utils.execute.return_value = (fake_mtab, None)
-        self.mgr.mount_target('fake_chroot')
-        self.assertEqual([mock.call('fake_chroot/'),
-                          mock.call('fake_chroot/boot'),
-                          mock.call('fake_chroot/var'),
-                          mock.call('fake_chroot/var/lib'),
-                          mock.call('fake_chroot/sys'),
-                          mock.call('fake_chroot/dev'),
-                          mock.call('fake_chroot/proc')],
-                         mock_utils.makedirs_if_not_exists.call_args_list)
-        self.assertEqual([mock.call('ext4', 'fake', 'fake_chroot/'),
-                          mock.call('ext2', 'fake', 'fake_chroot/boot'),
-                          mock.call('ext4', 'fake', 'fake_chroot/var'),
-                          mock.call('xfs', 'fake', 'fake_chroot/var/lib')],
-                         mock_fu.mount_fs.call_args_list)
-        self.assertEqual([mock.call('fake_chroot', '/sys'),
-                          mock.call('fake_chroot', '/dev'),
-                          mock.call('fake_chroot', '/proc')],
-                         mock_fu.mount_bind.call_args_list)
-        file_handle = mock_open.return_value.__enter__.return_value
-        file_handle.write.assert_called_once_with(fake_mtab)
-        mock_open.assert_called_once_with('fake_chroot/etc/mtab', 'wt',
-                                          encoding='utf-8')
-        mock_os.path.islink.assert_called_once_with('fake_chroot/etc/mtab')
-        self.assertFalse(mock_os.remove.called)
-
-    @mock.patch('bareon.manager.fu', create=True)
-    def test_umount_target(self, mock_fu):
-        self.mgr.driver._partition_scheme = objects.PartitionScheme()
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/var/lib', fs_type='xfs')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/', fs_type='ext4')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/boot', fs_type='ext2')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='swap', fs_type='swap')
-        self.mgr.driver.partition_scheme.add_fs(
-            device='fake', mount='/var', fs_type='ext4')
-        self.mgr.umount_target('fake_chroot')
-        self.assertEqual([mock.call('fake_chroot/proc'),
-                          mock.call('fake_chroot/dev'),
-                          mock.call('fake_chroot/sys/fs/fuse/connections'),
-                          mock.call('fake_chroot/sys'),
-                          mock.call('fake_chroot/var/lib'),
-                          mock.call('fake_chroot/boot'),
-                          mock.call('fake_chroot/var'),
-                          mock.call('fake_chroot/')],
-                         mock_fu.umount_fs.call_args_list)
-
 
 class TestImageBuild(unittest2.TestCase):
 
@@ -812,12 +724,10 @@ class TestImageBuild(unittest2.TestCase):
     @mock.patch('bareon.manager.open',
                 create=True, new_callable=mock.mock_open)
     @mock.patch('bareon.manager.yaml.safe_dump')
-    @mock.patch.object(manager.Manager, 'mount_target')
-    @mock.patch.object(manager.Manager, 'umount_target')
-    def test_do_build_image(self, mock_umount_target, mock_mount_target,
-                            mock_yaml_dump, mock_open, mock_shutil_move,
-                            mock_os, mock_utils,
-                            mock_fu, mock_bu, mock_set_apt_repos):
+    @mock.patch('bareon.manager.helpers', create=True)
+    def test_do_build_image(self, mock_helpers, mock_yaml_dump, mock_open,
+                            mock_shutil_move, mock_os, mock_utils, mock_fu,
+                            mock_bu, mock_set_apt_repos):
 
         loops = [objects.Loop(), objects.Loop()]
 
@@ -894,8 +804,8 @@ class TestImageBuild(unittest2.TestCase):
                          mock_fu.make_fs.call_args_list)
         mock_bu.mkdtemp_smart.assert_called_once_with(
             CONF.image_build_dir, CONF.image_build_suffix)
-        mock_mount_target.assert_called_once_with(
-            '/tmp/imgdir', treat_mtab=False, pseudo=False)
+        mock_helpers.mount_target.assert_called_once_with(
+            self.mgr.driver, '/tmp/imgdir')
         self.assertEqual([mock.call('/tmp/imgdir')] * 2,
                          mock_bu.suppress_services_start.call_args_list)
         mock_bu.run_debootstrap.assert_called_once_with(
@@ -936,8 +846,8 @@ class TestImageBuild(unittest2.TestCase):
             mock_fu.umount_fs.call_args_list)
         self.assertEqual(
             [mock.call(
-                '/tmp/imgdir', pseudo=False)] * 2,
-            mock_umount_target.call_args_list)
+                self.mgr.driver, '/tmp/imgdir')] * 2,
+            mock_helpers.umount_target.call_args_list)
         self.assertEqual(
             [mock.call('/dev/loop0'), mock.call('/dev/loop1')] * 2,
             mock_bu.deattach_loop.call_args_list)

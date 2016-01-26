@@ -258,6 +258,20 @@ class ExecuteTestCase(unittest2.TestCase):
         mock_exec.assert_called_once_with('udevadm', 'settle', '--quiet',
                                           check_exit_code=[0])
 
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(utils, 'open', create=True, new_callable=mock.mock_open)
+    @mock.patch.object(utils, 'os', autospec=True)
+    def test_treat_mtab(self, mock_os, mock_open, mock_execute):
+        mock_os.path.islink.return_value = True
+        mock_execute.return_value = ('fake_chroot', None)
+        utils.treat_mtab('fake_chroot')
+        mock_open.assert_called_once_with('fake_chroot/etc/mtab', 'wt',
+                                          encoding='utf-8')
+        mock_os.path.islink.assert_called_once_with('fake_chroot/etc/mtab')
+        mock_os.remove.assert_called_once_with('fake_chroot/etc/mtab')
+        mock_execute.assert_called_once_with(
+            'chroot', 'fake_chroot', 'grep', '-v', 'rootfs', '/proc/mounts')
+
 
 @mock.patch.object(utils, 'open', create=True, new_callable=mock.mock_open)
 @mock.patch.object(utils, 'os', autospec=True)

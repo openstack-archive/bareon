@@ -370,3 +370,13 @@ def get_interface_ip(mac_addr):
             match = ip_pattern.search(ip_line)
             if match:
                 return match.group(1)
+
+
+def treat_mtab(chroot):
+    mtab = execute(
+        'chroot', chroot, 'grep', '-v', 'rootfs', '/proc/mounts')[0]
+    mtab_path = chroot + '/etc/mtab'
+    if os.path.islink(mtab_path):
+        os.remove(mtab_path)
+    with open(mtab_path, 'wt', encoding='utf-8') as f:
+        f.write(six.text_type(mtab))
