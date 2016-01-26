@@ -22,6 +22,7 @@ import six
 import yaml
 
 from bareon import errors
+from bareon import helpers
 from bareon.openstack.common import log as logging
 from bareon.utils import artifact as au
 from bareon.utils import build as bu
@@ -444,49 +445,6 @@ class Manager(object):
                     chroot=chroot,
                     uri=repo.uri)
 
-    def mount_target(self, chroot, treat_mtab=True, pseudo=True):
-        """Mount a set of file systems into a chroot
-
-        :param chroot: Directory where to mount file systems
-        :param treat_mtab: If mtab needs to be actualized (Default: True)
-        :param pseudo: If pseudo file systems
-        need to be mounted (Default: True)
-        """
-        LOG.debug('Mounting target file systems: %s', chroot)
-        # Here we are going to mount all file systems in partition scheme.
-        for fs in self.driver.partition_scheme.fs_sorted_by_depth():
-            if fs.mount == 'swap':
-                continue
-            mount = chroot + fs.mount
-            utils.makedirs_if_not_exists(mount)
-            fu.mount_fs(fs.type, str(fs.device), mount)
-
-        if pseudo:
-            for path in ('/sys', '/dev', '/proc'):
-                utils.makedirs_if_not_exists(chroot + path)
-                fu.mount_bind(chroot, path)
-
-        if treat_mtab:
-            mtab = utils.execute(
-                'chroot', chroot, 'grep', '-v', 'rootfs', '/proc/mounts')[0]
-            mtab_path = chroot + '/etc/mtab'
-            if os.path.islink(mtab_path):
-                os.remove(mtab_path)
-            with open(mtab_path, 'wt', encoding='utf-8') as f:
-                f.write(six.text_type(mtab))
-
-    def umount_target(self, chroot, pseudo=True):
-        LOG.debug('Umounting target file systems: %s', chroot)
-        if pseudo:
-            # umount fusectl (typically mounted at /sys/fs/fuse/connections)
-            for path in ('/proc', '/dev', '/sys/fs/fuse/connections', '/sys'):
-                fu.umount_fs(chroot + path)
-        for fs in self.driver.partition_scheme.fs_sorted_by_depth(
-                reverse=True):
-            if fs.mount == 'swap':
-                continue
-            fu.umount_fs(chroot + fs.mount)
-
     def install_base_os(self, chroot):
         """Bootstrap a basic Linux system
 
@@ -540,7 +498,7 @@ class Manager(object):
                               six.text_type(fs.device))
 
         # mounting all images into chroot tree
-        self.mount_target(chroot, treat_mtab=False, pseudo=False)
+        helpers.mount_target(self.driver, chroot)
         LOG.info('Installing BASE operating system into image')
         # FIXME(kozhukalov): !!! we need this part to be OS agnostic
 
@@ -585,7 +543,8 @@ class Manager(object):
         LOG.debug('Finally: umounting procfs %s', os.path.join(chroot, 'proc'))
         fu.umount_fs(os.path.join(chroot, 'proc'))
         LOG.debug('Finally: umounting chroot tree %s', chroot)
-        self.umount_target(chroot, pseudo=False)
+        # TODO(agordeev): why was pseudo set to false?
+        helpers.umount_target(self.driver, chroot)
         for image in self.driver.image_scheme.images:
             if image.target_device.name:
                 LOG.debug('Finally: detaching loop device: %s',
@@ -654,7 +613,9 @@ class Manager(object):
     def do_bootloader(self):
         LOG.debug('--- Installing bootloader (do_bootloader) ---')
         chroot = '/tmp/target'
-        self.mount_target(chroot)
+        helpers.mount_target(self.driver, chroot)
+        fu.mount_bind_pseudo_fss(chroot)
+        utils.treat_mtab(chroot)
 
         mount2uuid = {}
         for fs in self.driver.partition_scheme.fss:
@@ -766,7 +727,8 @@ class Manager(object):
                     f.write(u'UUID=%s %s %s defaults 0 0\n' %
                             (mount2uuid[fs.mount], fs.mount, fs.type))
 
-        self.umount_target(chroot)
+        fu.umount_pseudo_fss(chroot)
+        helpers.umount_target(self.driver, chroot)
 
     def do_reboot(self):
         LOG.debug('--- Rebooting node (do_reboot) ---')
@@ -961,7 +923,8 @@ class Manager(object):
             LOG.info('*** Finalizing image space ***')
             fu.umount_fs(os.path.join(chroot, 'proc'))
             # umounting all loop devices
-            self.umount_target(chroot, pseudo=False)
+            # TODO(agordeev): why was pseudo set to false?
+            helpers.umount_target(self.driver, chroot)
 
             for image in self.driver.image_scheme.images:
                 # find fs with the same loop device object

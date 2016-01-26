@@ -95,3 +95,15 @@ def umount_fs(fs_mount, try_lazy_umount=False):
                 utils.execute('umount', '-l', fs_mount, check_exit_code=[0])
             else:
                 raise
+
+
+def mount_bind_pseudo_fss(chroot):
+    for path in ('/sys', '/dev', '/proc'):
+        utils.makedirs_if_not_exists(chroot + path)
+        mount_bind(chroot, path)
+
+
+def umount_pseudo_fss(chroot):
+    # umount fusectl (typically mounted at /sys/fs/fuse/connections)
+    for path in ('/proc', '/dev', '/sys/fs/fuse/connections', '/sys'):
+        umount_fs(chroot + path)
