@@ -18,9 +18,11 @@ import json
 import locale
 import math
 import os
+import random as _random
 import re
 import shlex
 import socket
+import string
 import subprocess
 import time
 
@@ -36,6 +38,7 @@ import urllib3
 from bareon import errors
 from bareon.openstack.common import log as logging
 
+random = _random.SystemRandom()
 
 LOG = logging.getLogger(__name__)
 
@@ -417,6 +420,14 @@ def get_interface_ip(mac_addr):
 
 def udevadm_settle():
     execute('udevadm', 'settle', check_exit_code=[0])
+
+
+def gensalt():
+    """Generate SHA-512 salt for crypt.crypt function."""
+    letters = string.ascii_letters + string.digits + './'
+    sha512prefix = "$6$"
+    random_letters = ''.join(random.choice(letters) for _ in range(16))
+    return sha512prefix + random_letters
 
 
 def dict_diff(dict1, dict2, sfrom="from", sto="to"):
