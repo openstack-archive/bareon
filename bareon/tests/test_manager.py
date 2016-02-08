@@ -40,6 +40,12 @@ class TestImageBuild(unittest2.TestCase):
     def setUp(self, mock_driver, mock_http, mock_yaml):
         super(self.__class__, self).setUp()
         mock_driver.return_value = nailgun_data.NailgunBuildImage
+
+        # TEST_ROOT_PASSWORD = crypt.crypt('qwerty')
+        self.TEST_ROOT_PASSWORD = ('$6$KyOsgFgf9cLbGNST$Ej0Usihfy7W/WT2H0z0mC'
+                                   '1DapC/IUpA0jF.Fs83mFIdkGYHL9IOYykRCjfssH.'
+                                   'YL4lHbmrvOd/6TIfiyh1hDY1')
+
         image_conf = {
             "image_data": {
                 "/": {
@@ -59,7 +65,8 @@ class TestImageBuild(unittest2.TestCase):
                     'priority': 1001
                 }
             ],
-            "codename": "trusty"
+            "codename": "trusty",
+            "hashed_root_password": self.TEST_ROOT_PASSWORD,
         }
         self.mgr = nailgun_deploy.Manager(
             nailgun_data.NailgunBuildImage(image_conf))
@@ -99,7 +106,10 @@ class TestImageBuild(unittest2.TestCase):
                                 'trusty', 'fakesection', priority=None),
                 objects.DEBRepo('mos', 'http://fakemos',
                                 'mosX.Y', 'fakesection', priority=1000)],
-            packages=['fakepackage1', 'fakepackage2'])
+            packages=['fakepackage1', 'fakepackage2'],
+            user_accounts=[
+                objects.User(name='root', password=None, homedir='/root',
+                             hashed_password=self.TEST_ROOT_PASSWORD)])
         self.mgr.driver.operating_system.proxies = objects.RepoProxies(
             proxies={'fake': 'fake'},
             direct_repo_addr_list='fake_addr')
@@ -187,7 +197,9 @@ class TestImageBuild(unittest2.TestCase):
             '/tmp/imgdir', packages=['fakepackage1', 'fakepackage2'],
             attempts=CONF.fetch_packages_attempts)
         mock_bu.do_post_inst.assert_called_once_with(
-            '/tmp/imgdir', allow_unsigned_file=CONF.allow_unsigned_file,
+            '/tmp/imgdir',
+            hashed_root_password=self.TEST_ROOT_PASSWORD,
+            allow_unsigned_file=CONF.allow_unsigned_file,
             force_ipv4_file=CONF.force_ipv4_file)
 
         signal_calls = mock_bu.stop_chrooted_processes.call_args_list

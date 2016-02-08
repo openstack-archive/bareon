@@ -108,6 +108,11 @@ opts = [
         default=True,
         help='Add udev rules for NIC remapping'
     ),
+    cfg.StrOpt(
+        'default_root_password',
+        default='r00tme',
+        help='Default password for root user',
+    )
 ]
 
 cli_opts = [
@@ -492,7 +497,10 @@ class Manager(BaseDeployDriver):
                                               'etc/nailgun-agent/config.yaml'))
             bu.append_lvm_devices_filter(chroot, CONF.multipath_lvm_filter,
                                          CONF.lvm_conf_path)
+
+            root = driver_os.get_user_by_name('root')
             bu.do_post_inst(chroot,
+                            hashed_root_password=root.hashed_password,
                             allow_unsigned_file=CONF.allow_unsigned_file,
                             force_ipv4_file=CONF.force_ipv4_file)
             # restore disabled hosts/resolv files
@@ -594,7 +602,9 @@ class Manager(BaseDeployDriver):
                            attempts=CONF.fetch_packages_attempts)
 
             LOG.debug('Post-install OS configuration')
+            root = driver_os.get_user_by_name('root')
             bu.do_post_inst(chroot,
+                            hashed_root_password=root.hashed_password,
                             allow_unsigned_file=CONF.allow_unsigned_file,
                             force_ipv4_file=CONF.force_ipv4_file)
 
