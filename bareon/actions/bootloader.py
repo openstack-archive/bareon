@@ -27,8 +27,8 @@ from bareon.utils import utils
 
 opts = [
     cfg.IntOpt(
-        'grub_timeout',
-        default=5,
+        'timeout',
+        default=10,
         help='Timeout in secs for GRUB'
     ),
     cfg.BoolOpt(
@@ -96,14 +96,14 @@ class BootLoaderAction(base.BaseAction, mixins.MountableMixin):
             if grub.version == 1:
                 gu.grub1_cfg(kernel=kernel, initrd=initrd,
                              kernel_params=grub.kernel_params, chroot=chroot,
-                             grub_timeout=CONF.grub_timeout)
+                             grub_timeout=CONF.timeout)
                 gu.grub1_install(install_devices, boot_device, chroot=chroot)
             else:
                 # TODO(kozhukalov): implement which kernel to use by default
                 # Currently only grub1_cfg accepts kernel and initrd
                 # parameters.
                 gu.grub2_cfg(kernel_params=grub.kernel_params, chroot=chroot,
-                             grub_timeout=CONF.grub_timeout)
+                             grub_timeout=CONF.timeout)
                 gu.grub2_install(install_devices, chroot=chroot)
 
             # TODO(agordeev): move to separate actions?
