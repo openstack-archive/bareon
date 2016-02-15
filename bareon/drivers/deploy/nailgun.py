@@ -54,11 +54,6 @@ opts = [
         help='Suffix which is used while creating temporary files',
     ),
     cfg.IntOpt(
-        'grub_timeout',
-        default=5,
-        help='Timeout in secs for GRUB'
-    ),
-    cfg.IntOpt(
         'max_loop_devices_count',
         default=255,
         # NOTE(agordeev): up to 256 loop devices could be allocated up to
