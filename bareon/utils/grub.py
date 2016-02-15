@@ -199,7 +199,7 @@ def grub1_stage1(chroot=''):
 
 
 def grub1_cfg(kernel=None, initrd=None,
-              kernel_params='', chroot='', grub_timeout=5):
+              kernel_params='', chroot='', grub_timeout=10):
 
     if not kernel:
         kernel = guess_kernel(chroot=chroot)
@@ -233,7 +233,7 @@ def grub2_install(install_devices, chroot='', boot_root='', lvm_boot=False):
         utils.execute(*cmd, run_as_root=True, check_exit_code=[0])
 
 
-def grub2_cfg(kernel_params='', chroot='', grub_timeout=5, lvm_boot=False):
+def grub2_cfg(kernel_params='', chroot='', grub_timeout=10, lvm_boot=False):
     with grub2_prepare(kernel_params, chroot, grub_timeout, lvm_boot):
         cmd = [guess_grub2_mkconfig(chroot), '-o', guess_grub2_conf(chroot)]
         if chroot:
@@ -241,7 +241,7 @@ def grub2_cfg(kernel_params='', chroot='', grub_timeout=5, lvm_boot=False):
         utils.execute(*cmd, run_as_root=True)
 
 
-def grub2_cfg_bundled(kernel_params='', chroot='', grub_timeout=5,
+def grub2_cfg_bundled(kernel_params='', chroot='', grub_timeout=10,
                       lvm_boot=False):
     # NOTE(oberezovskyi): symlink is required because of grub2-probe fails
     # to find device with root partition of fuel agent.
@@ -259,7 +259,8 @@ def grub2_cfg_bundled(kernel_params='', chroot='', grub_timeout=5,
 
 
 @contextmanager
-def grub2_prepare(kernel_params='', chroot='', grub_timeout=5, lvm_boot=False):
+def grub2_prepare(kernel_params='', chroot='', grub_timeout=10,
+                  lvm_boot=False):
     old_env = os.environ.copy()
     os.environ['GRUB_DISABLE_SUBMENU'] = 'y'
     os.environ['GRUB_CMDLINE_LINUX_DEFAULT'] = kernel_params

@@ -67,7 +67,7 @@ class TestBootLoaderAction(unittest2.TestCase):
         mock_gu.grub1_cfg.assert_called_once_with(
             kernel_params='fake_kernel_params root=UUID=fake_root_uuid ',
             initrd='guessed_initrd', kernel='guessed_kernel',
-            chroot='/tmp/target', grub_timeout=5)
+            chroot='/tmp/target', grub_timeout=10)
         mock_gu.grub1_install.assert_called_once_with(
             ['/dev/sda', '/dev/sdb', '/dev/sdc'],
             '/dev/sda3', chroot='/tmp/target')
@@ -94,7 +94,7 @@ class TestBootLoaderAction(unittest2.TestCase):
         mock_gu.grub1_cfg.assert_called_once_with(
             kernel_params='fake_kernel_params root=UUID= ',
             initrd='initrd_name', kernel='kernel_name', chroot='/tmp/target',
-            grub_timeout=5)
+            grub_timeout=10)
         mock_gu.grub1_install.assert_called_once_with(
             ['/dev/sda', '/dev/sdb', '/dev/sdc'],
             '/dev/sda3', chroot='/tmp/target')
@@ -167,7 +167,7 @@ class TestBootLoaderAction(unittest2.TestCase):
             initrd='guessed_initrd',
             chroot='/tmp/target',
             kernel='guessed_kernel',
-            grub_timeout=5)
+            grub_timeout=10)
         mock_gu.grub1_install.assert_called_once_with(
             ['/dev/sda', '/dev/sdb', '/dev/sdc'],
             '/dev/sda3', chroot='/tmp/target')
@@ -188,7 +188,7 @@ class TestBootLoaderAction(unittest2.TestCase):
         mock_gu.grub2_cfg.assert_called_once_with(
             kernel_params=' console=ttyS0,9600 console=tty0 rootdelay=90 '
                           'nomodeset root=UUID=fake_UUID ',
-            chroot='/tmp/target', grub_timeout=5)
+            chroot='/tmp/target', grub_timeout=10)
         mock_gu.grub2_install.assert_called_once_with(
             ['/dev/sda', '/dev/sdb', '/dev/sdc'],
             chroot='/tmp/target')
