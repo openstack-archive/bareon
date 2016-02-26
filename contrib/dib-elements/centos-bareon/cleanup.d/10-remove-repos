@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-1} -gt 0 ]; then
+    set -x
+fi
+
+set -e
+
+[[ -n "$TARGET_ROOT" ]] || exit 1
+
+sudo rm -f $TARGET_ROOT/etc/yum.repos.d/var_*.repo
+sudo rm -rf $TARGET_ROOT/var/cache/yum/*

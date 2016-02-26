@@ -1,0 +1,44 @@
+#!/bin/bash
+
+if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+RELEASE_FILE=/etc/bareon-release
+
+SCRIPTDIR=$(dirname $0)
+install-packages python-setuptools python-pip python-dev
+
+if [ -n ${BAREON_SRC-""} ] ; then
+    cd /tmp/bareon
+    pip install --upgrade setuptools
+    pip install -r requirements.txt && python setup.py install
+
+    pip freeze | grep bareon > $RELEASE_FILE
+    echo "Source-based bareon installation. Git log:" >> $RELEASE_FILE
+    cat changelog >> $RELEASE_FILE
+
+    cd /
+else
+    install-packages bareon
+
+    pip freeze | grep bareon > $RELEASE_FILE
+    echo "RPM-based bareon installation. RPM info:" >> $RELEASE_FILE
+    rpm -qi bareon >> $RELEASE_FILE
+fi
+
+if [ ! -f /usr/bin/ironic_callback ]; then
+    ln -s /usr/local/bin/ironic_callback /usr/bin/ironic_callback
+fi
+
+# TODO(lobur): generate this key and publish together with image
+install -D -g root -o root -m 0600 ${SCRIPTDIR}/files.ironic/root/.ssh/authorized_keys /root/.ssh/authorized_keys
+chmod 0700 /root/.ssh/
+install -D -g root -o root -m 0600 ${SCRIPTDIR}/files.ironic/etc/ssh/sshd_config /etc/ssh/sshd_config
+install -D -g root -o root -m 0664 ${SCRIPTDIR}/files.ironic/etc/network /etc/sysconfig/network
+install -D -g root -o root -m 0755 ${SCRIPTDIR}/files.ironic/usr/lib/systemd/system/ironic-callback.service /usr/lib/systemd/system/ironic-callback.service
+install -D -g root -o root -m 0755 ${SCRIPTDIR}/files.ironic/etc/bareon/bareon.conf /etc/bareon/bareon.conf
+
+systemctl enable ironic-callback.service
