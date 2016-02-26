@@ -14,8 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from bareon.drivers import nailgun
 from bareon import objects
+from bareon.drivers.data import nailgun
 
 
 class NailgunSimpleDriver(nailgun.Nailgun):

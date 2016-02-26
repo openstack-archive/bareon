@@ -126,13 +126,17 @@ class PartitionScheme(object):
             metadatacopies=metadatacopies)
         vg.add_pv(pv.name)
 
-    def fs_by_mount(self, mount):
-        return next((x for x in self.fss if x.mount == mount), None)
+    def fs_by_mount(self, mount, os_id=None):
+        found = filter(lambda x: (x.mount and x.mount == mount), self.fss)
+        if os_id:
+            found = filter(lambda x: (x.os_id and os_id in x.os_id), found)
+        if found:
+            return found[0]
 
     def fs_by_device(self, device):
         return next((x for x in self.fss if x.device == device), None)
 
-    def fs_sorted_by_depth(self, reverse=False):
+    def fs_sorted_by_depth(self, os_id=None, reverse=False):
         """Getting file systems sorted by path length.
 
         Shorter paths earlier.
@@ -141,7 +145,18 @@ class PartitionScheme(object):
         """
         def key(x):
             return x.mount.rstrip(os.path.sep).count(os.path.sep)
-        return sorted(self.fss, key=key, reverse=reverse)
+
+        sorted_fss = sorted(self.fss, key=key, reverse=reverse)
+        return filter(lambda fs: self._os_filter(fs, os_id), sorted_fss)
+
+    def _os_filter(self, file_system, os_id):
+            if os_id:
+                return os_id in file_system.os_id
+            else:
+                return True
+
+    def fs_by_os_id(self, os_id):
+        return filter(lambda fs: self._os_filter(fs, os_id), self.fss)
 
     def lv_by_device_name(self, device_name):
         return next((x for x in self.lvs if x.device_name == device_name),

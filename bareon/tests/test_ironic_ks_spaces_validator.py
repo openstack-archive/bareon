@@ -21,124 +21,118 @@ from bareon.drivers.data import ks_spaces_validator as kssv
 
 SAMPLE_SCHEME = [
     {
+        "id": {
+            "type": "name",
+            "value": "sda"
+        },
         "name": "sda",
-        "extra": [
-            "disk/by-id/scsi-SATA_VBOX_HARDDISK_VB69050467-b385c7cd",
-            "disk/by-id/ata-VBOX_HARDDISK_VB69050467-b385c7cd"
-        ],
-        "free_space": 64907,
         "volumes": [
             {
                 "type": "boot",
-                "size": 300
+                "size": "300"
             },
             {
                 "mount": "/boot",
-                "size": 200,
+                "size": "200",
                 "type": "raid",
                 "file_system": "ext2",
                 "name": "Boot"
             },
             {
                 "type": "lvm_meta_pool",
-                "size": 0
+                "size": "0"
             },
             {
-                "size": 19438,
+                "size": "19438",
                 "type": "pv",
-                "lvm_meta_size": 64,
+                "lvm_meta_size": "64",
                 "vg": "os"
             },
             {
-                "size": 45597,
+                "size": "45597",
                 "type": "pv",
-                "lvm_meta_size": 64,
+                "lvm_meta_size": "64",
                 "vg": "image"
             }
         ],
         "type": "disk",
-        "id": "sda",
-        "size": 65535
+        "size": "65535"
     },
     {
+        "id": {
+            "type": "name",
+            "value": "sdb"
+        },
         "name": "sdb",
-        "extra": [
-            "disk/by-id/scsi-SATA_VBOX_HARDDISK_VBf2923215-708af674",
-            "disk/by-id/ata-VBOX_HARDDISK_VBf2923215-708af674"
-        ],
-        "free_space": 64907,
         "volumes": [
             {
                 "type": "boot",
-                "size": 300
+                "size": "300"
             },
             {
                 "mount": "/boot",
-                "size": 200,
+                "size": "200",
                 "type": "raid",
                 "file_system": "ext2",
                 "name": "Boot"
             },
             {
                 "type": "lvm_meta_pool",
-                "size": 64
+                "size": "64"
             },
             {
-                "size": 0,
+                "size": "0",
                 "type": "pv",
-                "lvm_meta_size": 0,
+                "lvm_meta_size": "0",
                 "vg": "os"
             },
             {
-                "size": 64971,
+                "size": "64971",
                 "type": "pv",
-                "lvm_meta_size": 64,
+                "lvm_meta_size": "64",
                 "vg": "image"
             }
         ],
         "type": "disk",
-        "id": "sdb",
-        "size": 65535
+        "size": "65535"
     },
     {
         "name": "sdc",
-        "extra": [
-            "disk/by-id/scsi-SATA_VBOX_HARDDISK_VB50ee61eb-84e74fdf",
-            "disk/by-id/ata-VBOX_HARDDISK_VB50ee61eb-84e74fdf"
-        ],
-        "free_space": 64907,
         "volumes": [
             {
                 "type": "boot",
-                "size": 300
+                "size": "300"
             },
             {
                 "mount": "/boot",
-                "size": 200,
+                "size": "200",
                 "type": "raid",
                 "file_system": "ext2",
                 "name": "Boot"
             },
             {
                 "type": "lvm_meta_pool",
-                "size": 64
+                "size": "64"
             },
             {
-                "size": 0,
+                "size": "0",
                 "type": "pv",
-                "lvm_meta_size": 0,
+                "lvm_meta_size": "0",
                 "vg": "os"
             },
             {
-                "size": 64971,
+                "size": "64971",
                 "type": "pv",
-                "lvm_meta_size": 64,
+                "lvm_meta_size": "64",
                 "vg": "image"
             }
         ],
         "type": "disk",
-        "id": "disk/by-path/pci-0000:00:0d.0-scsi-0:0:0:0",
-        "size": 65535
+        "id": {
+            "type": "path",
+            "value": "disk/by-path/pci-0000:00:0d.0-scsi-0:0:0:0"
+        },
+        "size": "65535"
     },
     {
         "_allocate_size": "min",
@@ -147,14 +141,14 @@ SAMPLE_SCHEME = [
         "volumes": [
             {
                 "mount": "/",
-                "size": 15360,
+                "size": "15360",
                 "type": "lv",
                 "name": "root",
                 "file_system": "ext4"
             },
             {
                 "mount": "swap",
-                "size": 4014,
+                "size": "4014",
                 "type": "lv",
                 "name": "swap",
                 "file_system": "swap"
@@ -170,7 +164,7 @@ SAMPLE_SCHEME = [
         "volumes": [
             {
                 "mount": "/var/lib/glance",
-                "size": 175347,
+                "size": "175347",
                 "type": "lv",
                 "name": "glance",
                 "file_system": "xfs"
@@ -188,18 +182,61 @@ class TestKSSpacesValidator(unittest2.TestCase):
         self.fake_scheme = copy.deepcopy(SAMPLE_SCHEME)
 
     def test_validate_ok(self):
-        kssv.validate(self.fake_scheme)
+        kssv.validate(self.fake_scheme, 'ironic')
 
     def test_validate_jsoschema_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          [{}])
+        self.assertRaises(errors.WrongPartitionSchemeError,
+                          kssv.validate, [{}], 'ironic')
 
     def test_validate_no_disks_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          self.fake_scheme[-2:])
+        self.assertRaises(errors.WrongPartitionSchemeError,
+                          kssv.validate, self.fake_scheme[-2:], 'ironic')
 
     @unittest2.skip("Fix after cray rebase")
     def test_validate_16T_root_volume_fail(self):
         self.fake_scheme[3]['volumes'][0]['size'] = 16777216 + 1
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          self.fake_scheme)
+        self.assertRaises(errors.WrongPartitionSchemeError,
+                          kssv.validate, self.fake_scheme, 'ironic')
+
+    def test_validate_volume_type_fail(self):
+        incorrect_values_for_type = [
+            False, True, 0, 1, None, object
+        ]
+        for value in incorrect_values_for_type:
+            self.fake_scheme[0]['volumes'][1]['type'] = value
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, self.fake_scheme, 'ironic')
+
+    def test_validate_volume_size_fail(self):
+        incorrect_values_for_size = [
+            False, True, 0, 1, None, object
+        ]
+        for value in incorrect_values_for_size:
+            self.fake_scheme[0]['volumes'][1]['size'] = value
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, self.fake_scheme, 'ironic')
+
+    def test_validate_device_id_fail(self):
+        incorrect_values_for_id = [
+            False, True, 0, 1, None, object
+        ]
+        for value in incorrect_values_for_id:
+            self.fake_scheme[0]['id'] = value
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, self.fake_scheme, 'ironic')
+
+    def test_validate_missed_property(self):
+        required = ['id', 'size', 'volumes', 'type']
+        for prop in required:
+            fake = copy.deepcopy(self.fake_scheme)
+            del fake[0][prop]
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, fake, 'ironic')
+
+    def test_validate_missed_volume_property(self):
+        required = ['type', 'size', 'vg']
+        for prop in required:
+            fake = copy.deepcopy(self.fake_scheme)
+            del fake[0]['volumes'][3][prop]
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, fake, 'ironic')
