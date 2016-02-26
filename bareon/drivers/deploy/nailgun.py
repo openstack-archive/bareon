@@ -490,6 +490,8 @@ class Manager(BaseDeployDriver):
             bu.dump_runtime_uuid(bs_scheme.uuid,
                                  os.path.join(chroot,
                                               'etc/nailgun-agent/config.yaml'))
+            bu.append_lvm_devices_filter(chroot, CONF.multipath_lvm_filter,
+                                         CONF.lvm_conf_path)
             bu.do_post_inst(chroot,
                             allow_unsigned_file=CONF.allow_unsigned_file,
                             force_ipv4_file=CONF.force_ipv4_file)
