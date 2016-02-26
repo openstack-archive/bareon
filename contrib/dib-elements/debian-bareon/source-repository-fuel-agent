@@ -1,0 +1,1 @@
+agent git /tmp/bareon git@github.com:openstack/bareon.git

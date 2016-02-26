@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-1} -gt 0 ]; then
+    set -x
+fi
+
+set -e
+
+[[ -n "$TARGET_ROOT" ]] || exit 1
+
+sudo mkdir -p $TARGET_ROOT/etc/yum.repos.d
+sudo cp /etc/yum.repos.d/*.repo $TARGET_ROOT/etc/yum.repos.d/
