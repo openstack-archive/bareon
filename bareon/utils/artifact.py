@@ -50,16 +50,19 @@ class Target(object):
 
     def target(self, filename='/dev/null'):
         LOG.debug('Opening file: %s for write' % filename)
-        with open(filename, 'wb') as f:
-            count = 0
-            for chunk in self:
-                LOG.debug('Next chunk: %s' % count)
-                f.write(chunk)
-                count += 1
-            LOG.debug('Flushing file: %s' % filename)
-            f.flush()
-            # ensure data to be written to disk
-            os.fsync(f.fileno())
+        count = 0
+        try:
+            with open(filename, 'wb') as f:
+                for chunk in self:
+                    f.write(chunk)
+                    count += 1
+                LOG.debug('Flushing file: %s' % filename)
+                f.flush()
+                # ensure data to be written to disk
+                os.fsync(f.fileno())
+        except Exception:
+            LOG.debug('Next chunk: %s' % count)
+            raise
         LOG.debug('File is written: %s' % filename)
 
     def __next__(self):

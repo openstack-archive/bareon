@@ -32,6 +32,7 @@ from bareon.utils import lvm as lu
 from bareon.utils import md as mu
 from bareon.utils import partition as pu
 from bareon.utils import utils
+from bareon.drivers.deploy.base import BaseDeployDriver
 
 opts = [
     cfg.StrOpt(
@@ -142,29 +143,13 @@ opts = [
     ),
 ]
 
-cli_opts = [
-    cfg.StrOpt(
-        'data_driver',
-        default='nailgun',
-        help='Data driver'
-    ),
-    cfg.StrOpt(
-        'image_build_dir',
-        default='/tmp',
-        help='Directory where the image is supposed to be built',
-    ),
-]
-
 CONF = cfg.CONF
 CONF.register_opts(opts)
-CONF.register_cli_opts(cli_opts)
 
 LOG = logging.getLogger(__name__)
 
 
-class Manager(object):
-    def __init__(self, data):
-        self.driver = utils.get_driver(CONF.data_driver)(data)
+class Manager(BaseDeployDriver):
 
     def do_clean_filesystems(self):
         # NOTE(agordeev): it turns out that only mkfs.xfs needs '-f' flag in
@@ -303,7 +288,8 @@ class Manager(object):
             )
 
             utils.execute(
-                'write-mime-multipart', '--output=%s' % ud_output_path,
+                'write-mime-multipart',
+                '--output=%s' % ud_output_path,
                 '%s:text/cloud-boothook' % bh_output_path,
                 '%s:text/cloud-config' % cc_output_path)
             utils.execute('genisoimage', '-output', CONF.config_drive_path,
@@ -772,6 +758,12 @@ class Manager(object):
         LOG.debug('--- Rebooting node (do_reboot) ---')
         utils.execute('reboot')
 
+    def do_multiboot_bootloader(self):
+        pass
+
+    def do_install_os(self):
+        pass
+
     def do_provisioning(self):
         LOG.debug('--- Provisioning (do_provisioning) ---')
         self.do_partitioning()
@@ -825,7 +817,7 @@ class Manager(object):
             LOG.debug('Post-install OS configuration')
             if hasattr(bs_scheme, 'extra_files') and bs_scheme.extra_files:
                 for extra in bs_scheme.extra_files:
-                        bu.rsync_inject(extra, chroot)
+                    bu.rsync_inject(extra, chroot)
             if (hasattr(bs_scheme, 'root_ssh_authorized_file') and
                     bs_scheme.root_ssh_authorized_file):
                 LOG.debug('Put ssh auth file %s',
@@ -889,8 +881,8 @@ class Manager(object):
             except OSError:
                 LOG.debug('Finally: directory %s seems does not exist '
                           'or can not be removed', c_dir)
+            # TODO(kozhukalov): Split this huge method
 
-    # TODO(kozhukalov): Split this huge method
     # into a set of smaller ones
     # https://bugs.launchpad.net/fuel/+bug/1444090
     def do_build_image(self):

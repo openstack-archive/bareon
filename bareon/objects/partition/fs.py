@@ -18,14 +18,18 @@ from bareon.objects import base
 
 class FileSystem(base.Serializable):
 
-    def __init__(self, device, mount=None, fs_type=None,
-                 fs_options=None, fs_label=None, keep_data=False):
+    def __init__(self, device, mount=None, fs_type=None, fs_options=None,
+                 fs_label=None, keep_data=False, fstab_enabled=True,
+                 fstab_options='defaults', os_id=[]):
         self.keep_data = keep_data
         self.device = device
         self.mount = mount
-        self.type = fs_type or 'xfs'
+        self.type = fs_type if (fs_type is not None) else 'xfs'
         self.options = fs_options or ''
+        self.fstab_options = fstab_options
         self.label = fs_label or ''
+        self.fstab_enabled = fstab_enabled
+        self.os_id = os_id
 
     def to_dict(self):
         return {
@@ -35,4 +39,7 @@ class FileSystem(base.Serializable):
             'fs_options': self.options,
             'fs_label': self.label,
             'keep_data': self.keep_data,
+            'fstab_enabled': self.fstab_enabled,
+            'fstab_options': self.fstab_options,
+            'os_id': self.os_id,
         }
