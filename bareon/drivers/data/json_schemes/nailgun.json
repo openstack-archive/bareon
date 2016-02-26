@@ -1,0 +1,99 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Partition scheme",
+    "type": "array",
+    "minItems": 1,
+    "uniqueItems": true,
+    "items": {
+        "anyOf": [
+            {
+                "type": "object",
+                "required": ["type", "id", "volumes", "name",
+                             "size", "extra", "free_space"],
+                "properties": {
+                    "type": {"enum": ["disk"]},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "size": {"type": "integer"},
+                    "free_space": {"type": "integer"},
+                    "extra": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "volumes": {
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "object",
+                                    "required": ["type", "size",
+                                                 "lvm_meta_size", "vg"],
+                                    "properties": {
+                                        "type": {"enum": ["pv"]},
+                                        "size": {"type": "integer"},
+                                        "lvm_meta_size": {"type": "integer"},
+                                        "vg": {"type": "string"}
+                                    }
+                                },
+                                {
+                                    "type": "object",
+                                    "required": ["type", "size"],
+                                    "properties": {
+                                        "type": {"enum": ["raid",
+                                                          "partition"]},
+                                        "size": {"type": "integer"},
+                                        "mount": {"type": "string"},
+                                        "file_system": {"type": "string"},
+                                        "name": {"type": "string"}
+                                    }
+                                },
+                                {
+                                    "type": "object",
+                                    "required": ["type", "size"],
+                                    "properties": {
+                                        "type": {"enum": ["boot"]},
+                                        "size": {"type": "integer"}
+                                    }
+                                },
+                                {
+                                    "type": "object",
+                                    "required": ["type", "size"],
+                                    "properties": {
+                                        "type": {"enum": ["lvm_meta_pool"]},
+                                        "size": {"type": "integer"}
+                                    }
+                                }
+
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "type": "object",
+                "required": ["type", "id", "volumes"],
+                "properties": {
+                    "type": {"enum": ["vg"]},
+                    "id": {"type": "string"},
+                    "label": {"type": "string"},
+                    "min_size": {"type": "integer"},
+                    "_allocate_size": {"type": "string"},
+                    "volumes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["type", "size", "name"],
+                            "properties": {
+                                "type": {"enum": ["lv"]},
+                                "size": {"type": "integer"},
+                                "name": {"type": "string"},
+                                "mount": {"type": "string"},
+                                "file_system": {"type": "string"}
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    }
+}

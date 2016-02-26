@@ -37,6 +37,10 @@ class PartitioningDataDriverMixin(object):
     def partition_scheme(self):
         """Retruns instance of PartionScheme object"""
 
+    @abc.abstractproperty
+    def hw_partition_scheme(self):
+        """Returns instance of PartitionSchema object"""
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ProvisioningDataDriverMixin(object):
@@ -44,6 +48,10 @@ class ProvisioningDataDriverMixin(object):
     @abc.abstractproperty
     def image_scheme(self):
         """Returns instance of ImageScheme object"""
+
+    @abc.abstractproperty
+    def image_meta(self):
+        """Returns image_meta dictionary"""
 
     @abc.abstractproperty
     def operating_system(self):
@@ -64,3 +72,11 @@ class GrubBootloaderDataDriverMixin(object):
     @abc.abstractproperty
     def grub(self):
         """Returns instance of Grub object"""
+
+
+@six.add_metaclass(abc.ABCMeta)
+class MultibootDeploymentMixin(object):
+
+    @abc.abstractmethod
+    def get_os_ids(self):
+        pass

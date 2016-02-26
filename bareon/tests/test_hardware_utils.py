@@ -271,9 +271,11 @@ supports-register-dump: yes
         # should return False if udev MAJOR is not in a list of
         # major numbers which are used for disks
         # look at kernel/Documentation/devices.txt
+        # KVM virtio volumes have major number 254 in Debian
         mock_breport.return_value = {}
-        valid_majors = [3, 8, 9, 65, 66, 67, 68, 69, 70, 71, 104, 105,
-                        106, 107, 108, 109, 110, 111, 202, 252, 253, 259]
+        valid_majors = [3, 8, 9, 259, 65, 66, 67, 68, 69, 70, 71, 202, 104,
+                        105, 106, 107, 108, 109, 110, 111, 252, 253, 254]
+
         for major in (set(range(1, 261)) - set(valid_majors)):
             uspec = {
                 'MAJOR': str(major)
@@ -328,6 +330,17 @@ E: MINOR=0
 E: SUBSYSTEM=block
 E: USEC_INITIALIZED=87744
 
+P: /devices/virtual/block/dm-0
+N: dm-0
+E: DEVNAME=/dev/dm-0
+E: DEVPATH=/devices/vertual/block/dm-0
+E: DEVTYPE=disk
+E: MAJOR=259
+E: MINOR=0
+E: SUBSYSTEM=block
+E: DM_VG_NAME=swap
+E: USEC_INITIALIZED=87744
+
 P: /devices/pci0000:00/0000:00:1c.1/target16:0:0/16:0:0:0/block/sr0
 E: DEVTYPE=disk
 E: DEVNAME=/dev/sr0
@@ -347,8 +360,80 @@ E: SUBSYSTEM=block
 E: MAJOR=8
 E: UDEV_LOG=3""", '')
 
-        self.assertEqual(['/dev/sda', '/dev/nvme0n1', '/dev/sda1'],
+        self.assertEqual(['/dev/sda', '/dev/nvme0n1'],
                          hu.get_block_devices_from_udev_db())
+
+    @mock.patch('bareon.utils.hardware.utils.execute')
+    def test_get_vg_devices_from_udev_db(self, mock_exec):
+        mock_exec.return_value = ("""P: /devices/virtual/block/loop0
+N: loop0
+E: DEVNAME=/dev/loop0
+E: DEVPATH=/devices/virtual/block/loop0
+E: DEVTYPE=disk
+E: MAJOR=7
+E: SUBSYSTEM=block
+
+P: /devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0/block/sda
+N: sda
+S: disk/by-id/wwn-0x5000c5004008ac0f
+S: disk/by-path/pci-0000:00:1f.2-scsi-0:0:0:0
+E: DEVNAME=/dev/sda
+E: DEVTYPE=disk
+E: ID_ATA=1
+E: MAJOR=8
+E: SUBSYSTEM=block
+E: UDEV_LOG=3
+
+P: /devices/pci:00/:00:04.0/misc/nvme0
+N: nvme0
+E: DEVNAME=/dev/nvme0
+E: DEVPATH=/devices/pci:00/:00:04.0/misc/nvme0
+E: MAJOR=10
+E: MINOR=57
+E: SUBSYSTEM=misc
+
+P: /devices/pci:00/:00:04.0/block/nvme0n1
+N: nvme0n1
+E: DEVNAME=/dev/nvme0n1
+E: DEVPATH=/devices/pci:00/:00:04.0/block/nvme0n1
+E: DEVTYPE=disk
+E: MAJOR=259
+E: MINOR=0
+E: SUBSYSTEM=block
+E: USEC_INITIALIZED=87744
+
+P: /devices/virtual/block/dm-0
+N: dm-0
+E: DEVNAME=/dev/dm-0
+E: DEVPATH=/devices/vertual/block/dm-0
+E: DEVTYPE=disk
+E: MAJOR=259
+E: MINOR=0
+E: SUBSYSTEM=block
+E: DM_VG_NAME=swap
+E: USEC_INITIALIZED=87744
+
+P: /devices/pci0000:00/0000:00:1c.1/target16:0:0/16:0:0:0/block/sr0
+E: DEVTYPE=disk
+E: DEVNAME=/dev/sr0
+E: MAJOR=11
+E: MINOR=0
+E: SEQNUM=4400
+E: SUBSYSTEM=block
+
+P: /devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0/block/sda
+N: sda
+S: disk/by-id/wwn-0x5000c5004008ac0f
+S: disk/by-path/pci-0000:00:1f.2-scsi-0:0:0:0
+E: DEVNAME=/dev/sda1
+E: DEVTYPE=partition
+E: ID_ATA=1
+E: SUBSYSTEM=block
+E: MAJOR=8
+E: UDEV_LOG=3""", '')
+
+        self.assertEqual(['/dev/dm-0'],
+                         hu.get_vg_devices_from_udev_db())
 
     @mock.patch.object(hu, 'get_block_devices_from_udev_db')
     @mock.patch.object(hu, 'is_disk')
@@ -484,3 +569,75 @@ E: UDEV_LOG=3""", '')
         hu.is_block_device(filepath)
         mock_os_stat.assert_called_once_with(filepath)
         self.assertTrue(mock_isblk.called)
+
+    @mock.patch.object(hu, 'udevreport')
+    def test_get_device_ids(self, mock_udevreport):
+        mock_udevreport.return_value = {
+            'DEVLINKS': ['/dev/disk/by-label/label',
+                         '/dev/disk/by-id/id',
+                         '/dev/disk/by-path/path']}
+        part = '/dev/sda'
+        desired = {'name': '/dev/sda',
+                   'paths': ['disk/by-label/label',
+                             'disk/by-id/id',
+                             'disk/by-path/path']}
+
+        result = hu.get_device_ids(part)
+
+        mock_udevreport.assert_called_once_with(part)
+        self.assertDictEqual(result, desired)
+
+    def test_is_valid_dev_type(self):
+        device_info = {
+            'E: DEVNAME': '/dev/a',
+            'E: MAJOR': 1,
+            'E: DM_VG_NAME': 'group_name'
+        }
+        for mid in hu.VALID_MAJORS:
+            device_info['E: MAJOR'] = mid
+            self.assertTrue(hu._is_valid_dev_type(device_info, vg=True))
+
+    def test_is_valid_dev_type_not_vg(self):
+        device_info = {
+            'E: DEVNAME': '/dev/a',
+            'E: MAJOR': 1,
+            'E: DM_VG_NAME': 'group_name'
+        }
+        for mid in hu.VALID_MAJORS:
+            device_info['E: MAJOR'] = mid
+            self.assertFalse(hu._is_valid_dev_type(device_info, vg=False))
+
+    def test_is_valid_dev_type_wrong_major_test(self):
+        device_info = {
+            'E: DEVNAME': '/dev/a',
+            'E: MAJOR': 1,
+            'E: DM_VG_NAME': 'group_name'
+        }
+        for mid in set(range(0, 300)) - set(hu.VALID_MAJORS):
+            device_info['E: MAJOR'] = mid
+            self.assertFalse(hu._is_valid_dev_type(device_info, vg=True))
+
+    def test_is_valid_dev_type_devname_test(self):
+        device_info = {
+            'E: DEVNAME': '/dev/looptest',
+            'E: MAJOR': 3,
+            'E: DM_VG_NAME': 'group_name'
+        }
+        self.assertFalse(hu._is_valid_dev_type(device_info, vg=True))
+
+    def test_is_valid_dev_type_vg_test(self):
+        device_info = {
+            'E: DEVNAME': '/dev/a',
+            'E: MAJOR': 1,
+            'E: DM_VG_NAME': 'group_name'
+        }
+        for mid in hu.VALID_MAJORS:
+            device_info['E: MAJOR'] = mid
+            self.assertTrue(hu._is_valid_dev_type(device_info, vg=True))
+
+    def test_is_valid_dev_type_not_vg_test(self):
+        device_info = {
+            'E: DEVNAME': '/dev/a',
+            'E: MAJOR': 3,
+        }
+        self.assertFalse(hu._is_valid_dev_type(device_info, vg=True))

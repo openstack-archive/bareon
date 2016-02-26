@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 
 from bareon import errors
 
@@ -19,7 +20,9 @@ class Image(object):
     SUPPORTED_CONTAINERS = ['raw', 'gzip']
 
     def __init__(self, uri, target_device,
-                 format, container, size=None, md5=None):
+                 format, container, size=None, md5=None, os_id=None,
+                 os_boot=False, image_name='', image_uuid='',
+                 deployment_flags={}):
         # uri is something like
         # http://host:port/path/to/image.img or
         # file:///tmp/image.img
@@ -35,6 +38,11 @@ class Image(object):
         self.size = size
         self.md5 = md5
         self.img_tmp_file = None
+        self.os_id = os_id
+        self.os_boot = os_boot
+        self.image_name = image_name
+        self.image_uuid = image_uuid
+        self.deployment_flags = deployment_flags
 
 
 class ImageScheme(object):
@@ -43,3 +51,16 @@ class ImageScheme(object):
 
     def add_image(self, **kwargs):
         self.images.append(Image(**kwargs))
+
+    def get_images_sorted_by_depth(self, os_id=None, reverse=False):
+        key = lambda x: x.target_device.rstrip(os.path.sep).count(os.path.sep)
+        return sorted(self.get_os_images(), key=key, reverse=reverse)
+
+    def get_os_images(self, os_id=None):
+        if os_id:
+            return filter(lambda img: os_id in img.os_id, self.images)
+        return self.images
+
+    def get_os_root(self, os_id=None):
+        images = self.get_os_images(os_id)
+        return next((image for image in images if image.target_device == '/'))
