@@ -25,11 +25,13 @@ LOG = logging.getLogger(__name__)
 
 class Parted(base.Serializable):
 
-    def __init__(self, name, label, partitions=None, install_bootloader=False):
+    def __init__(self, name, label, partitions=None, install_bootloader=False,
+                 disk_size=None):
         self.name = name
         self.label = label
         self.partitions = partitions or []
         self.install_bootloader = install_bootloader
+        self.disk_size = disk_size
 
     def add_partition(self, **kwargs):
         # TODO(kozhukalov): validate before appending
@@ -111,6 +113,7 @@ class Parted(base.Serializable):
             'label': self.label,
             'partitions': partitions,
             'install_bootloader': self.install_bootloader,
+            'disk_size': self.disk_size
         }
 
     @classmethod

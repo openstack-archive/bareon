@@ -188,18 +188,64 @@ class TestKSSpacesValidator(unittest2.TestCase):
         self.fake_scheme = copy.deepcopy(SAMPLE_SCHEME)
 
     def test_validate_ok(self):
-        kssv.validate(self.fake_scheme)
+        kssv.validate(self.fake_scheme, 'nailgun')
 
     def test_validate_jsoschema_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          [{}])
+        self.assertRaises(errors.WrongPartitionSchemeError,
+                          kssv.validate, [{}], 'nailgun')
 
     def test_validate_no_disks_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          self.fake_scheme[-2:])
+        self.assertRaises(errors.WrongPartitionSchemeError,
+                          kssv.validate, self.fake_scheme[-2:], 'nailgun')
 
-    @unittest2.skip("Fix after cray rebase")
-    def test_validate_16T_root_volume_fail(self):
-        self.fake_scheme[3]['volumes'][0]['size'] = 16777216 + 1
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          self.fake_scheme)
+    def test_validate_free_space_type_fail(self):
+        incorrect_values_for_free_space = [
+            False, True, '0', '1', None, object
+        ]
+        for value in incorrect_values_for_free_space:
+            self.fake_scheme[0]['free_space'] = value
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, self.fake_scheme, 'nailgun')
+
+    def test_validate_volume_type_fail(self):
+        incorrect_values_for_type = [
+            False, True, 0, 1, None, object
+        ]
+        for value in incorrect_values_for_type:
+            self.fake_scheme[0]['volumes'][1]['type'] = value
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, self.fake_scheme, 'nailgun')
+
+    def test_validate_volume_size_fail(self):
+        incorrect_values_for_size = [
+            False, True, '0', '1', None, object
+        ]
+        for value in incorrect_values_for_size:
+            self.fake_scheme[0]['volumes'][1]['size'] = value
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, self.fake_scheme, 'nailgun')
+
+    def test_validate_device_id_fail(self):
+        incorrect_values_for_id = [
+            False, True, 0, 1, None, object
+        ]
+        for value in incorrect_values_for_id:
+            self.fake_scheme[0]['id'] = value
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, self.fake_scheme, 'nailgun')
+
+    def test_validate_missed_property(self):
+        required = ['id', 'size', 'volumes', 'type', 'free_space', 'volumes']
+        for prop in required:
+            fake = copy.deepcopy(self.fake_scheme)
+            del fake[0][prop]
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, fake, 'nailgun')
+
+    def test_validate_missed_volume_property(self):
+        required = ['type', 'size', 'vg']
+        for prop in required:
+            fake = copy.deepcopy(self.fake_scheme)
+            del fake[0]['volumes'][3][prop]
+            self.assertRaises(errors.WrongPartitionSchemeError,
+                              kssv.validate, fake, 'nailgun')
