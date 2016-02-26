@@ -276,6 +276,14 @@ def scsi_address(dev):
             return address
 
 
+def is_multipath_device(device, uspec=None):
+    """Check whether block device with given uspec is multipath device"""
+    if uspec is None:
+        uspec = udevreport(device)
+    return any((devlink.startswith('/dev/disk/by-id/dm-uuid-mpath-')
+                for devlink in uspec.get('DEVLINKS', [])))
+
+
 def get_block_devices_from_udev_db():
     return get_block_data_from_udev('disk')
 
@@ -399,6 +407,12 @@ def get_device_info(device, disks=True):
     # if device is not disk, skip it
     if disks and not is_disk(device, bspec=bspec, uspec=uspec):
         return
+
+    # NOTE(kszukielojc) if block device is multipath device,
+    # devlink /dev/mapper/* should be used instead /dev/dm-*
+    if is_multipath_device(device, uspec=uspec):
+        device = [devlink for devlink in uspec['DEVLINKS']
+                  if devlink.startswith('/dev/mapper/')][0]
 
     bdev = {
         'device': device,
