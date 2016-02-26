@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-1} -gt 0 ]; then
+    set -x
+fi
+
+set -e
+
+sed -i.bak \
+    -e 's/^SELINUX=.*/SELINUX=disabled/' \
+    /etc/sysconfig/selinux
+
+sed -i.bak \
+    -e 's/^SELINUX=.*/SELINUX=disabled/' \
+    /etc/selinux/config

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+SCRIPTDIR=$(dirname $0)
+
+install-packages openssh-server isc-dhcp-client rsync lvm2 parted ifupdown iproute2 gcc python-dev python-pip python-wheel
+
+if [ -n ${DIB_MAKE_SQUASHFS-""} ] ; then
+    install-packages live-boot live-boot-initramfs-tools
+fi
+
+# TODO(max_lobur): sync this with a way how we do for CentOS
+cd /tmp/bareon
+python2 setup.py bdist_wheel
+whl_name=$(ls -1rv dist/bareon*.whl 2>/dev/null | head -1)
+pip install $whl_name
+cd /
+
+if [ ! -f /usr/bin/ironic_callback ]; then
+    ln -s /usr/local/bin/ironic_callback /usr/bin/ironic_callback
+fi
+
+echo $'md-mod' >> /etc/modules
+
+install -D -g root -o root -m 0600 ${SCRIPTDIR}/files.ironic/root/.ssh/authorized_keys /root/.ssh/authorized_keys
+chmod 0700 /root/.ssh/
+install -D -g root -o root -m 0600 ${SCRIPTDIR}/files.ironic/etc/ssh/sshd_config /etc/ssh/sshd_config
+install -D -g root -o root -m 0644 ${SCRIPTDIR}/files.ironic/etc/hostname /etc/hostname
+install -D -g root -o root -m 0644 ${SCRIPTDIR}/files.ironic/etc/modprobe.d/blacklist-i2c-piix4.conf /etc/modprobe.d/blacklist-i2c-piix4.conf
+install -D -g root -o root -m 0644 ${SCRIPTDIR}/files.ironic/etc/modprobe.d/mlnx4_core.conf /etc/modprobe.d/mlnx4_core.conf
+install -D -g root -o root -m 0755 ${SCRIPTDIR}/files.ironic/etc/bareon/bareon.conf /etc/bareon/bareon.conf
+install -D -g root -o root -m 0644 ${SCRIPTDIR}/files.ironic/lib/systemd/system/ironic-callback.service /lib/systemd/system/ironic-callback.service
+
+# TODO(lobur): sync service definition with CentOS
+systemctl enable ironic-callback.service
+
+update-initramfs -u -k all
