@@ -16,4 +16,5 @@ dist
 .tox
 .idea
 .DS_Store
+.cache
 *.egg-info
