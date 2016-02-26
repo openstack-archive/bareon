@@ -21,8 +21,8 @@ from bareon.utils import utils
 LOG = logging.getLogger(__name__)
 
 
-def parse_partition_info(output):
-    lines = output.split('\n')
+def parse_partition_info(parted_output):
+    lines = parted_output.split('\n')
     generic_params = lines[1].rstrip(';').split(':')
     generic = {
         'dev': generic_params[0],
@@ -38,24 +38,48 @@ def parse_partition_info(output):
         if not line:
             continue
         part_params = line.split(':')
-        parts.append({
+        part = {
+            'disk_dev': generic['dev'],
+            'name': "%s%s" % (generic['dev'], int(part_params[0])),
             'num': int(part_params[0]),
             'begin': utils.parse_unit(part_params[1], 'MiB'),
             'end': utils.parse_unit(part_params[2], 'MiB'),
             'size': utils.parse_unit(part_params[3], 'MiB'),
-            'fstype': part_params[4] or None
-        })
+            'fstype': part_params[4] or None,
+            'type': None,
+            'flags': []
+        }
+        if part['fstype'] != 'free':
+            part['type'] = part_params[5] or None
+            part['flags'] = [f for f in part_params[6].split(', ') if f]
+
+        parts.append(part)
+
     return {'generic': generic, 'parts': parts}
 
 
 def info(dev):
     utils.udevadm_settle()
-    output = utils.execute('parted', '-s', dev, '-m',
-                           'unit', 'MiB',
-                           'print', 'free',
-                           check_exit_code=[0])[0]
-    LOG.debug('Info output: \n%s' % output)
-    result = parse_partition_info(output)
+    parted_output = utils.execute('parted', '-s', dev, '-m',
+                                  'unit', 'MiB',
+                                  'print free',
+                                  check_exit_code=[0])[0]
+    LOG.debug('Parted info output: \n%s' % parted_output)
+
+    result = parse_partition_info(parted_output)
+
+    file_output = utils.execute('file', '-sk', dev,
+                                check_exit_code=[0])[0]
+    LOG.debug('File info output: \n%s' % file_output)
+
+    result['generic']['has_bootloader'] = 'boot sector' in file_output
+    for part in result['parts']:
+        blkid_output = utils.execute('blkid -s UUID -o value',
+                                     part['name'],
+                                     check_exit_code=False)[0].strip()
+        LOG.debug('Blkid output: \n%s' % blkid_output)
+        part['uuid'] = blkid_output
+
     LOG.debug('Info result: %s' % result)
     return result
 
@@ -192,3 +216,8 @@ def reread_partitions(dev, out='Device or resource busy', timeout=60):
         out, err = utils.execute('partprobe', dev, check_exit_code=[0, 1])
         LOG.debug('Partprobe output: \n%s' % out)
         utils.udevadm_settle()
+
+
+def get_uuid(device):
+    return utils.execute('blkid', '-o', 'value', '-s', 'UUID', device,
+                         check_exit_code=[0])[0].strip()

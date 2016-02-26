@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import uuid
+
 from bareon import errors
 from bareon.openstack.common import log as logging
 from bareon.utils import utils
@@ -71,10 +74,16 @@ def mount_fs(fs_type, fs_dev, fs_mount, opts=None):
     utils.execute(*cmd, check_exit_code=[0])
 
 
+def change_uuid(fs_dev):
+    new_uuid = str(uuid.uuid4())
+    utils.execute('tune2fs', fs_dev, '-U', new_uuid, check_exit_code=False)
+
+
 def mount_bind(chroot, path, path2=None):
     if not path2:
         path2 = path
-    utils.execute('mount', '--bind', path, chroot + path2,
+    utils.execute('mount', '--bind', path,
+                  os.path.join(chroot, path2.strip(os.sep)),
                   check_exit_code=[0])
 
 

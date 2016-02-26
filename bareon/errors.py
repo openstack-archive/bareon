@@ -27,6 +27,18 @@ class WrongPartitionSchemeError(BaseError):
     pass
 
 
+class WrongPartitionPolicyError(BaseError):
+    pass
+
+
+class PartitionSchemeMismatchError(BaseError):
+    pass
+
+
+class HardwarePartitionSchemeCannotBeReadError(BaseError):
+    pass
+
+
 class WrongPartitionLabelError(BaseError):
     pass
 

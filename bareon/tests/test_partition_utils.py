@@ -244,36 +244,49 @@ class TestPartitionUtils(unittest2.TestCase):
     @mock.patch.object(utils, 'udevadm_settle')
     @mock.patch.object(utils, 'execute')
     def test_info(self, mock_exec, mock_udev):
-        mock_exec.return_value = [
-            'BYT;\n'
-            '/dev/fake:476940MiB:scsi:512:4096:msdos:ATA 1BD14;\n'
-            '1:0.03MiB:1.00MiB:0.97MiB:free;\n'
-            '1:1.00MiB:191MiB:190MiB:ext3::boot;\n'
-            '2:191MiB:476939MiB:476748MiB:::lvm;\n'
-            '1:476939MiB:476940MiB:1.02MiB:free;\n'
-        ]
-        expected = {'generic': {'dev': '/dev/fake',
-                                'logical_block': 512,
-                                'model': 'ATA 1BD14',
-                                'physical_block': 4096,
-                                'size': 476940,
-                                'table': 'msdos'},
+        self.maxDiff = None
+        mock_exec.side_effect = [
+            ('BYT;\n'
+             '/dev/fake:476940MiB:scsi:512:4096:msdos:ATA 1BD14;\n'  # parted
+             '1:0.03MiB:1.00MiB:0.97MiB:free;\n'
+             '1:1.00MiB:191MiB:190MiB:ext3::boot;\n'
+             '2:191MiB:476939MiB:476748MiB:::lvm;\n'
+             '1:476939MiB:476940MiB:1.02MiB:free;\n', 0),
 
-                    'parts': [{'begin': 1, 'end': 1, 'fstype': 'free',
-                               'num': 1, 'size': 1},
-                              {'begin': 1, 'end': 191, 'fstype': 'ext3',
-                               'num': 1, 'size': 190},
-                              {'begin': 191, 'end': 476939, 'fstype': None,
-                               'num': 2, 'size': 476748},
-                              {'begin': 476939, 'end': 476940,
-                               'fstype': 'free', 'num': 1, 'size': 2}]}
+            ("/dev/sda: x86 boot sector; partition 1: ID=0x83", 0),  # file
+            ("", 0),
+            ("uuid1", 0),  # blkid
+            ("uuid2", 0),
+            ("", 0)
+        ]
+        expected = {
+            'generic': {'dev': '/dev/fake',
+                        'logical_block': 512,
+                        'model': 'ATA 1BD14',
+                        'physical_block': 4096,
+                        'size': 476940,
+                        'table': 'msdos',
+                        'has_bootloader': True},
+
+            'parts': [{'disk_dev': '/dev/fake', 'name': '/dev/fake1',
+                       'begin': 1, 'end': 1, 'fstype': 'free',
+                       'num': 1, 'size': 1, 'uuid': "",
+                       'type': None, 'flags': []},
+                      {'disk_dev': '/dev/fake', 'name': '/dev/fake1',
+                       'begin': 1, 'end': 191, 'fstype': 'ext3',
+                       'num': 1, 'size': 190, 'uuid': "uuid1",
+                       'type': None, 'flags': ['boot']},
+                      {'disk_dev': '/dev/fake', 'name': '/dev/fake2',
+                       'begin': 191, 'end': 476939, 'fstype': None,
+                       'num': 2, 'size': 476748, 'uuid': "uuid2",
+                       'type': None, 'flags': ['lvm']},
+                      {'disk_dev': '/dev/fake', 'name': '/dev/fake1',
+                       'begin': 476939, 'end': 476940,
+                       'fstype': 'free', 'num': 1, 'size': 2, 'uuid': "",
+                       'type': None, 'flags': []}]}
+
         actual = pu.info('/dev/fake')
-        self.assertEqual(expected, actual)
-        mock_exec_expected_calls = [
-            mock.call('parted', '-s', '/dev/fake', '-m', 'unit', 'MiB',
-                      'print', 'free', check_exit_code=[0])]
-        self.assertEqual(mock_exec_expected_calls, mock_exec.call_args_list)
-        mock_udev.assert_called_once_with()
+        self.assertDictEqual(expected, actual)
 
     @mock.patch.object(utils, 'execute')
     def test_reread_partitions_ok(self, mock_exec):

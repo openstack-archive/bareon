@@ -16,8 +16,9 @@ from io import open
 import os
 import re
 import shutil
-
 import six
+
+from contextlib import contextmanager
 
 from bareon import errors
 from bareon.openstack.common import log as logging
@@ -27,7 +28,7 @@ LOG = logging.getLogger(__name__)
 
 
 def guess_grub2_conf(chroot=''):
-    for filename in ('/boot/grub/grub.cfg', '/boot/grub2/grub.cfg'):
+    for filename in ('/boot/grub2/grub.cfg', '/boot/grub/grub.cfg'):
         if os.path.isdir(os.path.dirname(chroot + filename)):
             return filename
     raise errors.GrubUtilsError('grub2 config file not found')
@@ -37,7 +38,7 @@ def guess_grub2_default(chroot=''):
     for filename in ('/etc/default/grub', '/etc/sysconfig/grub'):
         if os.path.isfile(chroot + filename):
             return filename
-    raise errors.GrubUtilsError('grub2 defaul config file not found')
+    raise errors.GrubUtilsError('grub2 default config file not found')
 
 
 def guess_grub2_mkconfig(chroot=''):
@@ -77,7 +78,7 @@ def guess_grub_install(chroot=''):
         if os.path.isfile(chroot + grub_install):
             LOG.debug('grub-install found: %s' % grub_install)
             return grub_install
-    raise errors.GrubUtilsError('grub-install not found')
+    raise errors.GrubUtilsError('grub-install not found in tenant image')
 
 
 def guess_grub1_datadir(chroot='', arch='x86_64'):
@@ -218,35 +219,70 @@ title Default ({kernel})
         f.write(six.text_type(config))
 
 
-def grub2_install(install_devices, chroot=''):
+def grub2_install(install_devices, chroot='', boot_root='', lvm_boot=False):
     grub_install = guess_grub_install(chroot=chroot)
     for install_device in install_devices:
         cmd = [grub_install, install_device]
-        if chroot:
+        if lvm_boot:
+            cmd.append('--modules="lvm"')
+        if boot_root:
+            cmd.append('--boot-directory={}/boot'.format(boot_root))
+        elif chroot:
             cmd[:0] = ['chroot', chroot]
+
         utils.execute(*cmd, run_as_root=True, check_exit_code=[0])
 
 
-def grub2_cfg(kernel_params='', chroot='', grub_timeout=5):
-    grub_defaults = chroot + guess_grub2_default(chroot=chroot)
-    rekerparams = re.compile(r'^.*GRUB_CMDLINE_LINUX=.*')
-    retimeout = re.compile(r'^.*GRUB_HIDDEN_TIMEOUT=.*')
-    new_content = ''
-    with open(grub_defaults) as f:
-        for line in f:
-            line = rekerparams.sub(
-                'GRUB_CMDLINE_LINUX="{kernel_params}"'.
-                format(kernel_params=kernel_params), line)
-            line = retimeout.sub('GRUB_HIDDEN_TIMEOUT={grub_timeout}'.
-                                 format(grub_timeout=grub_timeout), line)
-            new_content += line
-    # NOTE(agordeev): explicitly add record fail timeout, in order to
-    # prevent user confirmation appearing if unexpected reboot occured.
-    new_content += '\nGRUB_RECORDFAIL_TIMEOUT={grub_timeout}\n'.\
-                   format(grub_timeout=grub_timeout)
-    with open(grub_defaults, 'wt', encoding='utf-8') as f:
-        f.write(six.text_type(new_content))
-    cmd = [guess_grub2_mkconfig(chroot), '-o', guess_grub2_conf(chroot)]
-    if chroot:
-        cmd[:0] = ['chroot', chroot]
-    utils.execute(*cmd, run_as_root=True)
+def grub2_cfg(kernel_params='', chroot='', grub_timeout=5, lvm_boot=False):
+    with grub2_prepare(kernel_params, chroot, grub_timeout, lvm_boot):
+        cmd = [guess_grub2_mkconfig(chroot), '-o', guess_grub2_conf(chroot)]
+        if chroot:
+            cmd[:0] = ['chroot', chroot]
+        utils.execute(*cmd, run_as_root=True)
+
+
+def grub2_cfg_bundled(kernel_params='', chroot='', grub_timeout=5,
+                      lvm_boot=False):
+    # NOTE(oberezovskyi): symlink is required because of grub2-probe fails
+    # to find device with root partition of fuel agent.
+    # It's actuall in the ram and "device" is "rootfs"
+    os.symlink(chroot, '/tmp/rootfs')
+
+    with grub2_prepare(kernel_params, chroot, grub_timeout, lvm_boot):
+        # NOTE(oberezovskyi): required to prevent adding boot entries for
+        # ramdisk
+        os.remove('/etc/grub.d/10_linux')
+
+        cmd = [guess_grub2_mkconfig(), '-o', chroot + '/boot/grub2/grub.cfg']
+        utils.execute(*cmd, run_as_root=True, cwd='/tmp/')
+        os.remove('/tmp/rootfs')
+
+
+@contextmanager
+def grub2_prepare(kernel_params='', chroot='', grub_timeout=5, lvm_boot=False):
+    old_env = os.environ.copy()
+    os.environ['GRUB_DISABLE_SUBMENU'] = 'y'
+    os.environ['GRUB_CMDLINE_LINUX_DEFAULT'] = kernel_params+' test'
+    os.environ['GRUB_CMDLINE_LINUX'] = kernel_params+' test'
+    os.environ['GRUB_HIDDEN_TIMEOUT'] = str(grub_timeout)
+    os.environ['GRUB_RECORDFAIL_TIMEOUT'] = str(grub_timeout)
+    os.environ['GRUB_DISABLE_OS_PROBER'] = 'true'
+    os.environ['GRUB_DISABLE_LINUX_UUID'] = 'true'
+    os.environ['GRUB_DISABLE_RECOVERY'] = 'true'
+
+    if lvm_boot:
+        os.environ['GRUB_PRELOAD_MODULES'] = 'lvm'
+
+    if os.path.isfile(os.path.join(chroot, 'boot/grub/grub.conf')):
+        os.remove(os.path.join(chroot, 'boot/grub/grub.conf'))
+
+    yield
+
+    os.environ = old_env
+
+
+def guess_grub_cfg(chroot=''):
+    for grub_cfg in ('grub/grub.cfg', 'grub2/grub.cfg'):
+        if os.path.isfile(os.path.join(chroot, grub_cfg)):
+            return grub_cfg
+    raise errors.GrubUtilsError('grub2 mkconfig binary not found')
