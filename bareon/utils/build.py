@@ -31,8 +31,8 @@ import yaml
 from bareon import errors
 from bareon.openstack.common import log as logging
 from bareon.utils import fs as fu
-from bareon.utils import hardware as hu
 from bareon.utils import utils
+from bareon.utils import hardware as hu
 
 
 LOG = logging.getLogger(__name__)

@@ -15,9 +15,9 @@ from bareon.objects.bootloader import Grub
 from bareon.objects.configdrive import ConfigDriveCommon
 from bareon.objects.configdrive import ConfigDriveMcollective
 from bareon.objects.configdrive import ConfigDrivePuppet
-from bareon.objects.configdrive import ConfigDriveScheme
 from bareon.objects.device import Loop
 from bareon.objects.image import Image
+from bareon.objects.configdrive import ConfigDriveScheme
 from bareon.objects.image import ImageScheme
 from bareon.objects.operating_system import Centos
 from bareon.objects.operating_system import OperatingSystem
@@ -28,11 +28,11 @@ from bareon.objects.partition.md import MultipleDevice
 from bareon.objects.partition.parted import Parted
 from bareon.objects.partition.parted import Partition
 from bareon.objects.partition.pv import PhysicalVolume
-from bareon.objects.partition.scheme import PartitionScheme
 from bareon.objects.partition.vg import VolumeGroup
 from bareon.objects.repo import DEBRepo
 from bareon.objects.repo import Repo
 from bareon.objects.repo import RepoProxies
+from bareon.objects.partition.scheme import PartitionScheme
 
 
 PV = PhysicalVolume

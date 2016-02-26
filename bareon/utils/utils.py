@@ -14,6 +14,7 @@
 
 import copy
 import hashlib
+import json
 import locale
 import math
 import os
@@ -23,6 +24,7 @@ import socket
 import subprocess
 import time
 
+import difflib
 import jinja2
 from oslo_config import cfg
 import requests
@@ -162,12 +164,20 @@ def B2MiB(b, ceil=True):
     return int(math.floor(float(b) / 1024 / 1024))
 
 
-def get_driver(name):
-    LOG.debug('Trying to get driver: bareon.drivers.%s', name)
+def get_driver(namespace, name):
+    LOG.debug('Trying to get driver: %s', name)
     driver = stevedore.driver.DriverManager(
-        namespace='bareon.drivers', name=name).driver
+        namespace=namespace, name=name).driver
     LOG.debug('Found driver: %s', driver.__name__)
     return driver
+
+
+def get_deploy_driver(name):
+    return get_driver('bareon.drivers.deploy', name)
+
+
+def get_data_driver(name):
+    return get_driver('bareon.drivers.data', name)
 
 
 def render_and_save(tmpl_dir, tmpl_names, tmpl_data, file_name):
@@ -339,10 +349,6 @@ def unblacklist_udev_rules(udev_rules_dir, udev_rename_substr):
     udevadm_settle()
 
 
-def udevadm_settle():
-    execute('udevadm', 'settle', '--quiet', check_exit_code=[0])
-
-
 def parse_kernel_cmdline():
     """Parse linux kernel command line"""
     with open('/proc/cmdline', 'rt') as f:
@@ -370,3 +376,27 @@ def get_interface_ip(mac_addr):
             match = ip_pattern.search(ip_line)
             if match:
                 return match.group(1)
+
+
+def udevadm_settle():
+    execute('udevadm', 'settle', check_exit_code=[0])
+
+
+def dict_diff(dict1, dict2, sfrom="from", sto="to"):
+    j1 = json.dumps(dict1, indent=2)
+    j2 = json.dumps(dict2, indent=2)
+    return text_diff(j1, j2, sfrom=sfrom, sto=sto)
+
+
+def text_diff(text1, text2, sfrom="from", sto="to"):
+    split_and_strip = lambda ls: [l.strip() for l in ls.splitlines()
+                                  if l.strip()]
+    expected = split_and_strip(text1)
+    actual = split_and_strip(text2)
+
+    diff = difflib.unified_diff(expected,
+                                actual,
+                                fromfile=sfrom,
+                                tofile=sto,
+                                lineterm="")
+    return "\n".join(diff)

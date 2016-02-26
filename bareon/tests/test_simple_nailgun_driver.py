@@ -17,8 +17,8 @@ import mock
 import requests_mock
 import unittest2
 
-from bareon.drivers import simple
 from bareon import objects
+from bareon.drivers.data import simple
 from bareon.tests import base
 
 
