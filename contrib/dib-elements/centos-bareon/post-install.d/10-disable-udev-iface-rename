@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-1} -gt 0 ]; then
+    set -x
+fi
+
+set -e
+
+# Disabling this rule prevents inconsistent iface renames done by udev. This
+# were conflicting with prebuilt dhcp scripts (ifcfg-eth0, ifcfg-eth1) as well
+# as with dhcp-all-interfaces which was not able to generate scripts according
+# to new names (because it runs concurrently with renaming).
+# Using old schema (ethN) + pre-built dhcp scripts allows to have stable DHCP
+# even if eth interfaces are randomly swapped.
+ln -s /dev/null /etc/udev/rules.d/80-net-name-slot.rules
+
+# Configs for additional interfaces
+SYSCONFIG_PATH=/etc/sysconfig/network-scripts
+for IFACE_NUM in 1 2 3
+do
+    cp $SYSCONFIG_PATH/ifcfg-eth0 $SYSCONFIG_PATH/ifcfg-eth$IFACE_NUM
+    sed -i "s/eth0/eth$IFACE_NUM/g" $SYSCONFIG_PATH/ifcfg-eth$IFACE_NUM
+done
