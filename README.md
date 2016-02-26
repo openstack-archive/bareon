@@ -70,6 +70,7 @@ bareon
 │   ├── drivers
 │   ├── objects
 │   ├── tests
+│   ├── tests_functional
 │   ├── utils
 ├── README.md
 ├── LICENSE
