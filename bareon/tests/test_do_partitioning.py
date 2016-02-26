@@ -66,6 +66,7 @@ class TestPartitioningAction(unittest2.TestCase):
         self.assertEqual(mock_fu_mf_expected_calls,
                          mock_fu.make_fs.call_args_list)
 
+    @mock.patch.object(partitioning, 'hu', autospec=True)
     @mock.patch.object(partitioning, 'os', autospec=True)
     @mock.patch.object(partitioning, 'utils', autospec=True)
     @mock.patch.object(partitioning, 'mu', autospec=True)
@@ -73,7 +74,7 @@ class TestPartitioningAction(unittest2.TestCase):
     @mock.patch.object(partitioning, 'fu', autospec=True)
     @mock.patch.object(partitioning, 'pu', autospec=True)
     def test_do_partitioning_md(self, mock_pu, mock_fu, mock_lu, mock_mu,
-                                mock_utils, mock_os):
+                                mock_utils, mock_os, mock_hu):
         mock_os.path.exists.return_value = True
         self.drv.partition_scheme.mds = [
             objects.MD('fake_md1', 'mirror', devices=['/dev/sda1',
@@ -88,6 +89,7 @@ class TestPartitioningAction(unittest2.TestCase):
                                     ['/dev/sdb3', '/dev/sdc1'], 'default')],
                          mock_mu.mdcreate.call_args_list)
 
+    @mock.patch.object(partitioning, 'hu', autospec=True)
     @mock.patch.object(partitioning, 'os', autospec=True)
     @mock.patch.object(partitioning, 'utils', autospec=True)
     @mock.patch.object(partitioning, 'mu', autospec=True)
@@ -95,7 +97,7 @@ class TestPartitioningAction(unittest2.TestCase):
     @mock.patch.object(partitioning, 'fu', autospec=True)
     @mock.patch.object(partitioning, 'pu', autospec=True)
     def test_do_partitioning(self, mock_pu, mock_fu, mock_lu, mock_mu,
-                             mock_utils, mock_os):
+                             mock_utils, mock_os, mock_hu):
         mock_os.path.exists.return_value = True
         self.action.execute()
         mock_utils.unblacklist_udev_rules.assert_called_once_with(
@@ -165,3 +167,91 @@ class TestPartitioningAction(unittest2.TestCase):
             mock.call('xfs', '', '', '/dev/mapper/image-glance')]
         self.assertEqual(mock_fu_mf_expected_calls,
                          mock_fu.make_fs.call_args_list)
+        self.assertEqual([mock.call('/dev/sda'),
+                          mock.call('/dev/sdb'),
+                          mock.call('/dev/sdc')],
+                         mock_hu.is_multipath_device.call_args_list)
+
+
+class TestManagerMultipathPartition(unittest2.TestCase):
+
+    @mock.patch('bareon.drivers.data.nailgun.Nailgun.parse_image_meta',
+                return_value={})
+    @mock.patch('bareon.drivers.data.nailgun.hu.list_block_devices')
+    def setUp(self, mock_lbd, mock_image_meta):
+        super(TestManagerMultipathPartition, self).setUp()
+        mock_lbd.return_value = test_nailgun.LIST_BLOCK_DEVICES_MPATH
+        data = copy.deepcopy(test_nailgun.PROVISION_SAMPLE_DATA)
+        data['ks_meta']['pm_data']['ks_spaces'] =\
+            test_nailgun.MPATH_DISK_KS_SPACES
+        self.drv = nailgun.Nailgun(data)
+        self.action = partitioning.PartitioningAction(self.drv)
+
+    @mock.patch.object(partitioning, 'hu', autospec=True)
+    @mock.patch.object(partitioning, 'os', autospec=True)
+    @mock.patch.object(partitioning, 'utils', autospec=True)
+    @mock.patch.object(partitioning, 'mu', autospec=True)
+    @mock.patch.object(partitioning, 'lu', autospec=True)
+    @mock.patch.object(partitioning, 'fu', autospec=True)
+    @mock.patch.object(partitioning, 'pu', autospec=True)
+    def test_do_partitioning_mp(self, mock_pu, mock_fu, mock_lu, mock_mu,
+                                mock_utils, mock_os, mock_hu):
+        mock_os.path.exists.return_value = True
+        mock_hu.list_block_devices.return_value = test_nailgun.\
+            LIST_BLOCK_DEVICES_MPATH
+        self.action._make_partitions = mock.MagicMock()
+        mock_hu.is_multipath_device.side_effect = [True, False]
+        seq = mock.Mock()
+        seq.attach_mock(mock_utils.blacklist_udev_rules, 'blacklist')
+        seq.attach_mock(mock_utils.unblacklist_udev_rules, 'unblacklist')
+        seq.attach_mock(self.action._make_partitions, '_make_partitions')
+
+        self.action.execute()
+
+        seq_calls = [
+            mock.call.blacklist(udev_rules_dir='/etc/udev/rules.d',
+                                udev_rules_lib_dir='/lib/udev/rules.d',
+                                udev_empty_rule='empty_rule',
+                                udev_rename_substr='.renamedrule'),
+            mock.call._make_partitions([mock.ANY]),
+            mock.call.unblacklist(udev_rules_dir='/etc/udev/rules.d',
+                                  udev_rename_substr='.renamedrule'),
+            mock.call._make_partitions([mock.ANY],
+                                       wait_for_udev_settle=True)]
+        self.assertEqual(seq_calls, seq.mock_calls)
+
+        parted_list = seq.mock_calls[1][1][0]
+        self.assertEqual(parted_list[0].name, '/dev/sdc')
+        parted_list = seq.mock_calls[3][1][0]
+        self.assertEqual(parted_list[0].name, '/dev/mapper/12312')
+
+        mock_fu_mf_expected_calls = [
+            mock.call('ext2', '', '', '/dev/mapper/12312-part3'),
+            mock.call('ext4', '', '', '/dev/sdc1')]
+        self.assertEqual(mock_fu_mf_expected_calls,
+                         mock_fu.make_fs.call_args_list)
+
+    @mock.patch.object(partitioning, 'pu', autospec=True)
+    @mock.patch.object(partitioning, 'utils', autospec=True)
+    @mock.patch.object(partitioning, 'os', autospec=True)
+    def test_make_partitions_settle(self, mock_os, mock_utils, mock_pu):
+        self.action._make_partitions(self.drv.partition_scheme.parteds,
+                                     wait_for_udev_settle=True)
+
+        for call in mock_utils.wait_for_udev_settle.mock_calls:
+            self.assertEqual(call, mock.call(attempts=10))
+
+        self.assertEqual(mock_pu.make_label.mock_calls, [
+            mock.call('/dev/mapper/12312', 'gpt'),
+            mock.call('/dev/sdc', 'gpt')])
+
+        self.assertEqual(mock_pu.make_partition.mock_calls, [
+            mock.call('/dev/mapper/12312', 1, 25, 'primary'),
+            mock.call('/dev/mapper/12312', 25, 225, 'primary'),
+            mock.call('/dev/mapper/12312', 225, 425, 'primary'),
+            mock.call('/dev/mapper/12312', 425, 625, 'primary'),
+            mock.call('/dev/mapper/12312', 625, 645, 'primary'),
+            mock.call('/dev/sdc', 1, 201, 'primary')])
+
+        self.assertEqual(mock_pu.set_partition_flag.mock_calls, [
+            mock.call('/dev/mapper/12312', 1, 'bios_grub')])

@@ -21,6 +21,7 @@ from bareon.actions import base
 from bareon import errors
 from bareon.openstack.common import log as logging
 from bareon.utils import fs as fu
+from bareon.utils import hardware as hu
 from bareon.utils import lvm as lu
 from bareon.utils import md as mu
 from bareon.utils import partition as pu
@@ -53,6 +54,24 @@ opts = [
         help='Allow to skip MD containers (fake raid leftovers) while '
              'cleaning the rest of MDs',
     ),
+    cfg.IntOpt(
+        'partition_udev_settle_attempts',
+        default=10,
+        help='How many times udev settle will be called after partitioning'
+    ),
+    cfg.ListOpt(
+        'multipath_lvm_filter',
+        default=['r|/dev/mapper/.*-part.*|',
+                 'r|/dev/dm-.*|',
+                 'r|/dev/disk/by-id/.*|'],
+        help='Extra filters for lvm.conf to force lvm work with partions '
+             'on multipath devices using /dev/mapper/<id>-part<n> links'
+    ),
+    cfg.StrOpt(
+        'lvm_conf_path',
+        default='/etc/lvm/lvm.conf',
+        help='Path to LVM configuration file'
+    )
 ]
 
 CONF = cfg.CONF
@@ -95,6 +114,25 @@ class PartitioningAction(base.BaseAction):
             if not fs.keep_data and not found_images:
                 fu.make_fs(fs.type, fs.options, fs.label, fs.device)
 
+    @staticmethod
+    def _make_partitions(parteds, wait_for_udev_settle=False):
+        for parted in parteds:
+            pu.make_label(parted.name, parted.label)
+            for prt in parted.partitions:
+                pu.make_partition(prt.device, prt.begin, prt.end, prt.type)
+                if wait_for_udev_settle:
+                    utils.wait_for_udev_settle(
+                        attempts=CONF.partition_udev_settle_attempts)
+                for flag in prt.flags:
+                    pu.set_partition_flag(prt.device, prt.count, flag)
+                if prt.guid:
+                    pu.set_gpt_type(prt.device, prt.count, prt.guid)
+                # If any partition to be created doesn't exist it's an error.
+                # Probably it's again 'device or resource busy' issue.
+                if not os.path.exists(prt.name):
+                    raise errors.PartitionNotFoundError(
+                        'Partition %s not found after creation' % prt.name)
+
     def _do_partitioning(self):
         LOG.debug('--- Partitioning disks (do_partitioning) ---')
 
@@ -105,12 +143,6 @@ class PartitioningAction(base.BaseAction):
         lu.lvremove_all()
         lu.vgremove_all()
         lu.pvremove_all()
-
-        LOG.debug("Enabling udev's rules blacklisting")
-        utils.blacklist_udev_rules(udev_rules_dir=CONF.udev_rules_dir,
-                                   udev_rules_lib_dir=CONF.udev_rules_lib_dir,
-                                   udev_rename_substr=CONF.udev_rename_substr,
-                                   udev_empty_rule=CONF.udev_empty_rule)
 
         for parted in self.driver.partition_scheme.parteds:
             for prt in parted.partitions:
@@ -130,24 +162,26 @@ class PartitioningAction(base.BaseAction):
                               'seek=%s' % max(prt.end - 3, 0), 'count=5',
                               'of=%s' % prt.device, check_exit_code=[0, 1])
 
+        parteds = []
+        parteds_with_rules = []
         for parted in self.driver.partition_scheme.parteds:
-            pu.make_label(parted.name, parted.label)
-            for prt in parted.partitions:
-                pu.make_partition(prt.device, prt.begin, prt.end, prt.type)
-                for flag in prt.flags:
-                    pu.set_partition_flag(prt.device, prt.count, flag)
-                if prt.guid:
-                    pu.set_gpt_type(prt.device, prt.count, prt.guid)
-                # If any partition to be created doesn't exist it's an error.
-                # Probably it's again 'device or resource busy' issue.
-                if not os.path.exists(prt.name):
-                    raise errors.PartitionNotFoundError(
-                        'Partition %s not found after creation' % prt.name)
+            if hu.is_multipath_device(parted.name):
+                parteds_with_rules.append(parted)
+            else:
+                parteds.append(parted)
 
-        LOG.debug("Disabling udev's rules blacklisting")
+        utils.blacklist_udev_rules(udev_rules_dir=CONF.udev_rules_dir,
+                                   udev_rules_lib_dir=CONF.udev_rules_lib_dir,
+                                   udev_rename_substr=CONF.udev_rename_substr,
+                                   udev_empty_rule=CONF.udev_empty_rule)
+
+        self._make_partitions(parteds)
+
         utils.unblacklist_udev_rules(
             udev_rules_dir=CONF.udev_rules_dir,
             udev_rename_substr=CONF.udev_rename_substr)
+
+        self._make_partitions(parteds_with_rules, wait_for_udev_settle=True)
 
         # If one creates partitions with the same boundaries as last time,
         # there might be md and lvm metadata on those partitions. To prevent
