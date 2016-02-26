@@ -71,6 +71,7 @@ bareon
 │   ├── objects
 │   ├── openstack
 │   ├── tests
+│   ├── tests_functional
 │   ├── utils
 ├── openstack-common.conf
 ├── README.md
