@@ -1,0 +1,37 @@
+#!/bin/bash
+
+if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
+    set -x
+fi
+set -e
+set -o pipefail
+
+
+[ -n "$TARGET_ROOT" ]
+
+source $_LIB/img-functions
+
+IMAGE_PATH=$(readlink -f $IMAGE_NAME)
+cd $TARGET_ROOT
+
+echo "#disabled" > ./tmp/fstab.new
+sudo mv ./tmp/fstab.new ./etc/fstab
+sudo ln -s ./sbin/init ./
+
+
+if [ ! -n ${DIB_MAKE_SQUASHFS-""} ] ; then
+    sudo find . -path './sys/*' -prune -o -path './proc/*' -prune -o -path './dev/*' -prune -o -path './tmp/*' -prune -o -path './usr/share/icons/*' -prune -o -path './usr/share/locale/*' -prune -o -print | sudo cpio -o -H newc | gzip > ${IMAGE_PATH}.initramfs
+
+    select_boot_kernel_initrd $TARGET_ROOT
+    sudo cp $BOOTDIR/$KERNEL ${IMAGE_PATH}.vmlinuz
+else
+    cp $TMP_HOOKS_PATH/cleanup.d/squashfs-images/initrd.img  ${IMAGE_PATH}.initramfs
+    cp $TMP_HOOKS_PATH/cleanup.d/squashfs-images/vmlinuz ${IMAGE_PATH}.vmlinuz
+
+    sudo rm -f ./boot/initrd*
+    sudo rm -f ./boot/vmlinuz*
+
+    mkdir -p $TMP_BUILD_DIR/workdir/LiveOS
+    cp $TMP_IMAGE_PATH $TMP_BUILD_DIR/workdir/LiveOS/ext3fs.img
+    sudo mksquashfs $TMP_BUILD_DIR/workdir/ ${IMAGE_PATH}.squashfs
+fi
