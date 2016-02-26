@@ -16,31 +16,32 @@ import itertools
 import math
 import os
 
-from oslo_config import cfg
 import six
+import yaml
+from oslo_config import cfg
 from six.moves.urllib.parse import urljoin
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.parse import urlsplit
-import yaml
 
-from bareon.drivers.base import BaseDataDriver
-from bareon.drivers.base import ConfigDriveDataDriverMixin
-from bareon.drivers.base import GrubBootloaderDataDriverMixin
-from bareon.drivers.base import PartitioningDataDriverMixin
-from bareon.drivers.base import ProvisioningDataDriverMixin
-from bareon.drivers import ks_spaces_validator
-from bareon import errors
-from bareon import objects
 from bareon.openstack.common import log as logging
 from bareon.utils import hardware as hu
 from bareon.utils import utils
+
+from bareon import errors
+from bareon import objects
+from bareon.drivers.data import ks_spaces_validator
+from bareon.drivers.data.base import BaseDataDriver
+from bareon.drivers.data.base import ConfigDriveDataDriverMixin
+from bareon.drivers.data.base import GrubBootloaderDataDriverMixin
+from bareon.drivers.data.base import PartitioningDataDriverMixin
+from bareon.drivers.data.base import ProvisioningDataDriverMixin
 
 
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.import_opt('prepare_configdrive', 'bareon.manager')
-CONF.import_opt('config_drive_path', 'bareon.manager')
+CONF.import_opt('prepare_configdrive', 'bareon.drivers.deploy.nailgun')
+CONF.import_opt('config_drive_path', 'bareon.drivers.deploy.nailgun')
 
 
 def match_device(hu_disk, ks_disk):
@@ -109,8 +110,16 @@ class Nailgun(BaseDataDriver,
         return self._partition_scheme
 
     @property
+    def hw_partition_scheme(self):
+        return None
+
+    @property
     def image_scheme(self):
         return self._image_scheme
+
+    @property
+    def image_meta(self):
+        return None
 
     @property
     def grub(self):
@@ -443,10 +452,11 @@ class Nailgun(BaseDataDriver,
                           disk['name'])
                 parted.add_partition(size=20, configdrive=True)
 
-        # checking if /boot is created
-        if not self._boot_partition_done or not self._boot_done:
-            raise errors.WrongPartitionSchemeError(
-                '/boot partition has not been created for some reasons')
+        # TODO(lobur): port https://review.openstack.org/#/c/261562/ to fix
+        # # checking if /boot is created
+        # if not self._boot_partition_done or not self._boot_done:
+        #     raise errors.WrongPartitionSchemeError(
+        #         '/boot partition has not been created for some reasons')
 
         LOG.debug('Looping over all volume groups in provision data')
         for vg in self.ks_vgs:
@@ -616,33 +626,11 @@ class Nailgun(BaseDataDriver,
         return image_scheme
 
 
-class Ironic(Nailgun):
-    def __init__(self, data):
-        super(Ironic, self).__init__(data)
-
-    def parse_configdrive_scheme(self):
-        pass
-
-    def parse_partition_scheme(self):
-        # FIXME(yuriyz): Using of internal attributes of base class is very
-        # fragile. This code acts only as temporary solution. Ironic should
-        # use own driver, based on simple driver.
-        self._boot_partition_done = True
-        self._boot_done = True
-        return super(Ironic, self).parse_partition_scheme()
-
-
 class NailgunBuildImage(BaseDataDriver,
                         ProvisioningDataDriverMixin,
                         ConfigDriveDataDriverMixin,
                         GrubBootloaderDataDriverMixin):
 
-    # TODO(kozhukalov):
-    # This list of packages is used by default only if another
-    # list isn't given in build image data. In the future
-    # we need to handle package list in nailgun. Even more,
-    # in the future, we'll be building not only ubuntu images
-    # and we'll likely move this list into some kind of config.
     DEFAULT_TRUSTY_PACKAGES = [
         "acl",
         "anacron",
@@ -688,6 +676,12 @@ class NailgunBuildImage(BaseDataDriver,
         "vlan",
     ]
 
+    # TODO(kozhukalov):
+    # This list of packages is used by default only if another
+    # list isn't given in build image data. In the future
+    # we need to handle package list in nailgun. Even more,
+    # in the future, we'll be building not only ubuntu images
+    # and we'll likely move this list into some kind of config.
     def __init__(self, data):
         super(NailgunBuildImage, self).__init__(data)
         self._image_scheme = objects.ImageScheme()
@@ -695,6 +689,9 @@ class NailgunBuildImage(BaseDataDriver,
 
         self.parse_schemes()
         self._operating_system = self.parse_operating_system()
+
+    def image_meta(self):
+        pass
 
     @property
     def partition_scheme(self):

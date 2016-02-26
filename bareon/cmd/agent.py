@@ -18,8 +18,8 @@ from oslo_config import cfg
 import six
 import yaml
 
-from bareon import manager as manager
 from bareon.openstack.common import log as logging
+from bareon.utils import utils
 from bareon import version
 
 cli_opts = [
@@ -32,6 +32,26 @@ cli_opts = [
         'input_data',
         default='',
         help='Input data (json string)'
+    ),
+    cfg.StrOpt(
+        'data_driver',
+        default='nailgun',
+        help='Data driver'
+    ),
+    cfg.StrOpt(
+        'deploy_driver',
+        default='nailgun',
+        help='Deploy driver'
+    ),
+    cfg.StrOpt(
+        'image_build_dir',
+        default='/tmp',
+        help='Directory where the image is supposed to be built',
+    ),
+    cfg.StrOpt(
+        'config_drive_path',
+        default='/tmp/config-drive.img',
+        help='Path where to store generated config drive image',
     ),
 ]
 
@@ -95,10 +115,15 @@ def main(actions=None):
                 data = yaml.safe_load(f)
         LOG.debug('Input data: %s', data)
 
-        mgr = manager.Manager(data)
+        data_driver_class = utils.get_data_driver(CONF.data_driver)
+        data_driver = data_driver_class(data)
+
+        deploy_driver_class = utils.get_deploy_driver(CONF.deploy_driver)
+        deploy_driver = deploy_driver_class(data_driver)
+
         if actions:
             for action in actions:
-                getattr(mgr, action)()
+                getattr(deploy_driver, action)()
     except Exception as exc:
         handle_exception(exc)
 

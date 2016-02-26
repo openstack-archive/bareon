@@ -214,15 +214,9 @@ def lvcreate(vgname, lvname, size):
     ):
         raise errors.LVAlreadyExistsError(
             'Error while creating lv: lv %s already exists' % lvname)
-    # NOTE(agordeev): by default, lvcreate is configured to wipe signature
-    # on allocated volume. '--yes' should be passed to avoid waiting for
-    # user's confirmation:
-    # "WARNING: <signature> signature detected on <device>. Wipe it? [y/n]"
-    # FIXME: the version of lvm2 shipped with Ubuntu 14.04 does not support
-    # --yes option. bareon should properly decomission the storage
-    # (Ubuntu installer does that just fine).
-    stdout, stderr = utils.execute('lvcreate', '--help')
-    force_opt = '--yes' if '--yes' in stdout else ''
+
+    # NOTE(lobur): Add options to overcome "signature detected" prompts.
+    force_opt = '-y --wipesignatures y --zero y'
     cmd = 'lvcreate {force_opt} -L {size}m -n {lvname} {vgname}'.format(
         size=size, lvname=lvname, vgname=vgname, force_opt=force_opt)
     utils.execute(*cmd.split(), check_exit_code=[0])
