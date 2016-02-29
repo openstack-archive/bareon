@@ -33,6 +33,7 @@ from bareon.objects.partition.vg import VolumeGroup
 from bareon.objects.repo import DEBRepo
 from bareon.objects.repo import Repo
 from bareon.objects.repo import RepoProxies
+from bareon.objects.users import User
 
 
 PV = PhysicalVolume
@@ -69,5 +70,6 @@ __all__ = [
     'Repo',
     'DEBRepo',
     'Loop',
-    'RepoProxies'
+    'RepoProxies',
+    'User',
 ]
