@@ -66,8 +66,8 @@ class BootLoaderAction(base.BaseAction, mixins.MountableMixin):
             mount2uuid = {}
             for fs in partition_scheme.fss:
                 mount2uuid[fs.mount] = utils.execute(
-                    'blkid', '-o', 'value', '-s', 'UUID', fs.device,
-                    check_exit_code=[0])[0].strip()
+                    'blkid', '-c', '/dev/null', '-o', 'value', '-s', 'UUID',
+                    fs.device, check_exit_code=[0])[0].strip()
 
             if '/' not in mount2uuid:
                 raise errors.WrongPartitionSchemeError(
