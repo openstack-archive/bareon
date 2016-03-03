@@ -109,7 +109,7 @@ class TestBootLoaderAction(unittest2.TestCase):
     def test_do_bootloader_rootfs_uuid(self, mock_utils, mock_gu, mock_open,
                                        mock_grub):
         def _fake_uuid(*args, **kwargs):
-            if len(args) >= 6 and args[5] == '/dev/sda':
+            if len(args) >= 8 and args[7] == '/dev/sda':
                 return ('FAKE_ROOTFS_UUID', None)
             else:
                 return ('FAKE_UUID', None)
