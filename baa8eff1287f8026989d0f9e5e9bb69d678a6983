@@ -1,0 +1,10 @@
+Code-Review+1: Oleksandr Berezovskyi <berezovskyi.oleksandr@gmail.com>
+Code-Review+2: Aleksandr Gordeev <agordeev@mirantis.com>
+Code-Review+2: Evgeniy L <eli@mirantis.com>
+Workflow+1: Aleksandr Gordeev <agordeev@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Fri, 11 Mar 2016 17:04:39 +0000
+Reviewed-on: https://review.openstack.org/286166
+Project: openstack/bareon
+Branch: refs/heads/master
