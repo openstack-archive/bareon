@@ -15,7 +15,7 @@
 import jsonschema
 
 from bareon import errors
-from bareon.openstack.common import log as logging
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 
