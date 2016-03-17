@@ -15,8 +15,9 @@
 
 import os
 
+from oslo_log import log as logging
+
 from bareon.drivers.deploy.generic import GenericDeployDriver
-from bareon.openstack.common import log as logging
 from bareon.utils import utils
 
 LOG = logging.getLogger(__name__)

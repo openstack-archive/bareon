@@ -14,10 +14,10 @@
 # limitations under the License.
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from bareon.drivers.deploy.generic import GenericDeployDriver
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import artifact as au
 from bareon.utils import fs as fu
 from bareon.utils import utils
