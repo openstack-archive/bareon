@@ -17,13 +17,13 @@ import math
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 from six.moves.urllib.parse import urljoin
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.parse import urlsplit
 import yaml
 
-from bareon.openstack.common import log as logging
 from bareon.utils import hardware as hu
 from bareon.utils import utils
 

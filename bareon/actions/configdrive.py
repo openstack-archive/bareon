@@ -16,10 +16,10 @@
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from bareon.actions import base
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import utils
 
 opts = [

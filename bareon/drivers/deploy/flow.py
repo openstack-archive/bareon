@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_log import log as logging
+
 from bareon.drivers.deploy import base
 from bareon.drivers.deploy import mixins
 from bareon import errors
-from bareon.openstack.common import log as logging
 
 import stevedore.named
 

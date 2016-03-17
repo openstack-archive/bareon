@@ -17,11 +17,11 @@ from io import open
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from bareon.actions import base
 from bareon.drivers.deploy import mixins
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import grub as gu
 from bareon.utils import utils
 

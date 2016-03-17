@@ -18,6 +18,7 @@ import shutil
 import signal
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 import yaml
 
@@ -27,7 +28,6 @@ from bareon.actions import copyimage
 from bareon.actions import partitioning
 from bareon.drivers.deploy.base import BaseDeployDriver
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import build as bu
 from bareon.utils import fs as fu
 from bareon.utils import utils
