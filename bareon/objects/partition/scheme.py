@@ -15,6 +15,8 @@
 #    under the License.
 import os
 
+from oslo_log import log as logging
+
 from bareon import errors
 from bareon.objects.partition.fs import FileSystem
 from bareon.objects.partition.lv import LogicalVolume
@@ -22,8 +24,6 @@ from bareon.objects.partition.md import MultipleDevice
 from bareon.objects.partition.parted import Parted
 from bareon.objects.partition.pv import PhysicalVolume
 from bareon.objects.partition.vg import VolumeGroup
-
-from bareon.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

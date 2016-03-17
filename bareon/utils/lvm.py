@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_log import log as logging
+
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import utils
 
 

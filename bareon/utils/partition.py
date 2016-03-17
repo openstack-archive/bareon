@@ -14,8 +14,9 @@
 
 import time
 
+from oslo_log import log as logging
+
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import utils
 
 LOG = logging.getLogger(__name__)

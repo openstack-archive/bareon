@@ -18,8 +18,9 @@ import six
 
 from contextlib import contextmanager
 
+from oslo_log import log as logging
+
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import fs as fu
 from bareon.utils import partition as pu
 from bareon.utils import utils

@@ -18,9 +18,10 @@ import shutil
 
 import six
 
+from oslo_log import log as logging
+
 from bareon.actions import base
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import artifact as au
 from bareon.utils import fs as fu
 from bareon.utils import hardware as hw
