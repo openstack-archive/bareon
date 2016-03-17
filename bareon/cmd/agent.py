@@ -17,11 +17,11 @@ import signal
 import sys
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 import yaml
 
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import utils
 from bareon import version
 
@@ -59,7 +59,8 @@ cli_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_cli_opts(cli_opts)
+LOG = logging.getLogger(__name__)
+PROJECT = "bareon"
 
 
 def list_opts():
@@ -141,11 +142,13 @@ def main(actions=None):
     if os.getpid() != os.getpgrp():
         os.setpgrp()
     signal.signal(signal.SIGTERM, handle_sigterm)
-    CONF(sys.argv[1:], project='bareon',
-         version=version.version_info.release_string())
 
-    logging.setup('bareon')
-    LOG = logging.getLogger(__name__)
+    # Setup logging and process configuration options
+    logging.register_options(CONF)
+    CONF.register_cli_opts(cli_opts)
+    CONF(sys.argv[1:], project=PROJECT,
+         version=version.version_info.release_string())
+    logging.setup(CONF, PROJECT)
 
     try:
         if CONF.input_data:

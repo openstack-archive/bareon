@@ -15,8 +15,8 @@
 import time
 
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import utils
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 PARTITION_ALIGMENT = ('none', 'cylinder', 'minimal', 'optimal')
