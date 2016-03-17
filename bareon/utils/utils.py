@@ -29,6 +29,7 @@ import time
 import difflib
 import jinja2
 from oslo_config import cfg
+from oslo_log import log as logging
 import requests
 import six
 import stevedore.driver
@@ -36,7 +37,6 @@ import urllib3
 
 
 from bareon import errors
-from bareon.openstack.common import log as logging
 
 random = _random.SystemRandom()
 

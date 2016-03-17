@@ -17,8 +17,8 @@ import tempfile
 import uuid
 
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import utils
+from oslo_log import log as logging
 
 import six
 

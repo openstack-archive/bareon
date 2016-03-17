@@ -18,12 +18,12 @@ import os
 import re
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from bareon.actions import partitioning
 from bareon.drivers.deploy.base import BaseDeployDriver
 from bareon.drivers.deploy import mixins
 from bareon import errors
-from bareon.openstack.common import log as logging
 from bareon.utils import grub as gu
 from bareon.utils import partition as pu
 from bareon.utils import utils

@@ -19,12 +19,12 @@ import math
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from bareon.drivers.data.generic import GenericDataDriver
 from bareon.drivers.data import ks_spaces_validator
 from bareon import errors
 from bareon import objects
-from bareon.openstack.common import log as logging
 from bareon.utils import hardware as hu
 from bareon.utils import partition as pu
 from bareon.utils import utils
