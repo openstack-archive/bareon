@@ -17,6 +17,7 @@ import math
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 from six.moves.urllib.parse import urljoin
 from six.moves.urllib.parse import urlparse
@@ -31,7 +32,6 @@ from bareon.drivers.base import ProvisioningDataDriverMixin
 from bareon.drivers import ks_spaces_validator
 from bareon import errors
 from bareon import objects
-from bareon.openstack.common import log as logging
 from bareon.utils import hardware as hu
 from bareon.utils import utils
 
