@@ -19,8 +19,8 @@ import six
 import yaml
 
 from bareon import manager as manager
-from bareon.openstack.common import log as logging
 from bareon import version
+from oslo_log import log as logging
 
 cli_opts = [
     cfg.StrOpt(
