@@ -45,12 +45,14 @@ class TestBootLoaderAction(unittest2.TestCase):
                    for x in ['a', 'b', 'c']]
         self.drv.partition_scheme.parteds = parteds
 
+    @mock.patch.object(bootloader, 'hw', autospec=True)
     @mock.patch.object(bootloader, 'open', create=True,
                        new_callable=mock.mock_open)
     @mock.patch.object(bootloader, 'gu', autospec=True)
     @mock.patch.object(bootloader, 'utils', autospec=True)
-    def test_do_bootloader_grub1_kernel_initrd_guessed(self, mock_utils,
-                                                       mock_gu, mock_open):
+    def test_do_bootloader_grub1_kernel_initrd_guessed(
+            self, mock_utils, mock_gu, mock_open, mock_hw):
+        mock_hw.is_multipath_device.return_value = False
         mock_utils.execute.return_value = ('fake_root_uuid', '')
         mock_gu.guess_grub_version.return_value = 1
         # grub has kernel_name and initrd_name both set to None
@@ -76,12 +78,14 @@ class TestBootLoaderAction(unittest2.TestCase):
         mock_gu.guess_kernel.assert_called_once_with(
             regexp='fake_kernel_regexp', chroot='/tmp/target')
 
+    @mock.patch.object(bootloader, 'hw', autospec=True)
     @mock.patch.object(bootloader, 'open', create=True,
                        new_callable=mock.mock_open)
     @mock.patch.object(bootloader, 'gu', autospec=True)
     @mock.patch.object(bootloader, 'utils', autospec=True)
-    def test_do_bootloader_grub1_kernel_initrd_set(self, mock_utils,
-                                                   mock_gu, mock_open):
+    def test_do_bootloader_grub1_kernel_initrd_set(
+            self, mock_utils, mock_gu, mock_open, mock_hw):
+        mock_hw.is_multipath_device.return_value = False
         mock_utils.execute.return_value = ('', '')
         mock_gu.guess_grub_version.return_value = 1
         self.drv.grub.kernel_params = 'fake_kernel_params'
@@ -101,18 +105,20 @@ class TestBootLoaderAction(unittest2.TestCase):
         self.assertFalse(mock_gu.guess_initrd.called)
         self.assertFalse(mock_gu.guess_kernel.called)
 
+    @mock.patch.object(bootloader, 'hw', autospec=True)
     @mock.patch.object(objects, 'Grub', autospec=True)
     @mock.patch.object(bootloader, 'open', create=True,
                        new_callable=mock.mock_open)
     @mock.patch.object(bootloader, 'gu', autospec=True)
     @mock.patch.object(bootloader, 'utils', autospec=True)
     def test_do_bootloader_rootfs_uuid(self, mock_utils, mock_gu, mock_open,
-                                       mock_grub):
+                                       mock_grub, mock_hw):
         def _fake_uuid(*args, **kwargs):
             if len(args) >= 8 and args[7] == '/dev/sda':
                 return ('FAKE_ROOTFS_UUID', None)
             else:
                 return ('FAKE_UUID', None)
+        mock_hw.is_multipath_device.return_value = False
         mock_utils.execute.side_effect = _fake_uuid
         mock_grub.version = 2
         mock_gu.guess_grub_version.return_value = 2
@@ -134,13 +140,15 @@ class TestBootLoaderAction(unittest2.TestCase):
         self.assertRaises(errors.WrongPartitionSchemeError,
                           self.action.execute)
 
+    @mock.patch.object(bootloader, 'hw', autospec=True)
     @mock.patch.object(bootloader, 'open', create=True,
                        new_callable=mock.mock_open)
     @mock.patch.object(bootloader, 'gu', autospec=True)
     @mock.patch.object(bootloader, 'utils', autospec=True)
     def test_do_bootloader_grub_version_changes(
-            self, mock_utils, mock_gu, mock_open):
+            self, mock_utils, mock_gu, mock_open, mock_hw):
         # actually covers only grub1 related logic
+        mock_hw.is_multipath_device.return_value = False
         mock_utils.execute.return_value = ('fake_UUID\n', None)
         mock_gu.guess_grub_version.return_value = 'expected_version'
         self.action.execute()
@@ -148,12 +156,15 @@ class TestBootLoaderAction(unittest2.TestCase):
             chroot='/tmp/target')
         self.assertEqual('expected_version', self.drv.grub.version)
 
+    @mock.patch.object(bootloader, 'hw', autospec=True)
     @mock.patch.object(bootloader, 'open', create=True,
                        new_callable=mock.mock_open)
     @mock.patch.object(bootloader, 'gu', autospec=True)
     @mock.patch.object(bootloader, 'utils', autospec=True)
-    def test_do_bootloader_grub1(self, mock_utils, mock_gu, mock_open):
+    def test_do_bootloader_grub1(self, mock_utils, mock_gu, mock_open,
+                                 mock_hw):
         # actually covers only grub1 related logic
+        mock_hw.is_multipath_device.return_value = False
         mock_utils.execute.return_value = ('fake_UUID\n', None)
         mock_gu.guess_initrd.return_value = 'guessed_initrd'
         mock_gu.guess_kernel.return_value = 'guessed_kernel'
@@ -174,12 +185,15 @@ class TestBootLoaderAction(unittest2.TestCase):
         self.assertFalse(mock_gu.grub2_cfg.called)
         self.assertFalse(mock_gu.grub2_install.called)
 
+    @mock.patch.object(bootloader, 'hw', autospec=True)
     @mock.patch.object(bootloader, 'open', create=True,
                        new_callable=mock.mock_open)
     @mock.patch.object(bootloader, 'gu', autospec=True)
     @mock.patch.object(bootloader, 'utils', autospec=True)
-    def test_do_bootloader_grub2(self, mock_utils, mock_gu, mock_open):
+    def test_do_bootloader_grub2(self, mock_utils, mock_gu, mock_open,
+                                 mock_hw):
         # actually covers only grub2 related logic
+        mock_hw.is_multipath_device.return_value = False
         mock_utils.execute.return_value = ('fake_UUID\n', None)
         mock_gu.guess_grub_version.return_value = 2
         self.action.execute()
@@ -195,10 +209,12 @@ class TestBootLoaderAction(unittest2.TestCase):
         self.assertFalse(mock_gu.grub1_cfg.called)
         self.assertFalse(mock_gu.grub1_install.called)
 
+    @mock.patch.object(bootloader, 'hw', autospec=True)
     @mock.patch.object(bootloader, 'gu', autospec=True)
     @mock.patch.object(bootloader, 'utils', autospec=True)
-    def test_do_bootloader_writes(self, mock_utils, mock_gu):
+    def test_do_bootloader_writes(self, mock_utils, mock_gu, mock_hw):
         # actually covers only write() calls
+        mock_hw.is_multipath_device.return_value = False
         mock_utils.execute.return_value = ('fake_UUID\n', None)
         self.drv.configdrive_scheme.common.udevrules = "08:00:27:79:da:80_"\
             "eth0,08:00:27:46:43:60_eth1,08:00:27:b1:d7:15_eth2"
@@ -251,3 +267,30 @@ class TestBootLoaderAction(unittest2.TestCase):
             '/tmp/target/etc/nailgun-agent')
         self.action._umount_target.assert_called_once_with(
             '/tmp/target', os_id=None, pseudo=True)
+
+    @mock.patch.object(bootloader, 'hw', autospec=True)
+    @mock.patch.object(bootloader, 'bu', autospec=True)
+    def test_do_bootloader_override_lvm_config_with_multipath(
+            self, mock_bu, mock_hw):
+        # actually covers only multipath related logic
+        # Lets assume that only /dev/sda device is not-multipath
+        mock_hw.is_multipath_device.side_effect = False, False, True
+        mock_hw.udevreport.side_effect = (
+            {'DEVLINKS': ['/dev/disk/by-id/fake1']},
+            {'DEVLINKS': ['/dev/disk/by-id/fake21', '/dev/disk/by-id/fake22']}
+        )
+        self.action._override_lvm_config('/tmp/target')
+        mock_bu.override_lvm_config.assert_called_once_with(
+            '/tmp/target',
+            {'devices': {
+                'scan': ['/dev/disk/', '/dev/mapper/'],
+                'preferred_names': ['^/dev/mapper/'],
+                'global_filter': [
+                    'a|^/dev/disk/by-id/fake1(p)?(-part)?[0-9]*|',
+                    'a|^/dev/disk/by-id/fake21(p)?(-part)?[0-9]*|',
+                    'a|^/dev/disk/by-id/fake22(p)?(-part)?[0-9]*|',
+                    'r|^/dev/disk/.*|',
+                    'a|^/dev/mapper/.*|',
+                    'r/.*/']}},
+            update_initramfs=True,
+            lvm_conf_path='/etc/lvm/lvm.conf')

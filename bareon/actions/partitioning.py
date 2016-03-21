@@ -54,19 +54,6 @@ opts = [
         help='Allow to skip MD containers (fake raid leftovers) while '
              'cleaning the rest of MDs',
     ),
-    cfg.ListOpt(
-        'multipath_lvm_filter',
-        default=['r|/dev/mapper/.*-part.*|',
-                 'r|/dev/dm-.*|',
-                 'r|/dev/disk/by-id/.*|'],
-        help='Extra filters for lvm.conf to force lvm work with partions '
-             'on multipath devices using /dev/mapper/<id>-part<n> links'
-    ),
-    cfg.StrOpt(
-        'lvm_conf_path',
-        default='/etc/lvm/lvm.conf',
-        help='Path to LVM configuration file'
-    )
 ]
 
 CONF = cfg.CONF

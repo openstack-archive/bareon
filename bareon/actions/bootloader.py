@@ -22,7 +22,9 @@ from bareon.actions import base
 from bareon.drivers.deploy import mixins
 from bareon import errors
 from bareon.openstack.common import log as logging
+from bareon.utils import build as bu
 from bareon.utils import grub as gu
+from bareon.utils import hardware as hw
 from bareon.utils import utils
 
 opts = [
@@ -36,6 +38,33 @@ opts = [
         default=True,
         help='Add udev rules for NIC remapping'
     ),
+    cfg.ListOpt(
+        'lvm_filter_for_mpath',
+        default=['r|^/dev/disk/.*|',
+                 'a|^/dev/mapper/.*|',
+                 'r/.*/'],
+        help='Extra filters for lvm.conf to force LVM works with partitions '
+             'on multipath devices properly.'
+    ),
+    cfg.ListOpt(
+        'mpath_lvm_preferred_names',
+        default=['^/dev/mapper/'],
+        help='List of devlinks patterns which are preffered for LVM. If '
+             'multipath device has a few devlinks, LVM will use the one '
+             'matching to the given pattern.'
+    ),
+    cfg.ListOpt(
+        'mpath_lvm_scan_dirs',
+        default=['/dev/disk/', '/dev/mapper/'],
+        help='List of directories to scan recursively for LVM physical '
+             'volumes. Devices in directories outside this hierarchy will be '
+             'ignored.'
+    ),
+    cfg.StrOpt(
+        'lvm_conf_path',
+        default='/etc/lvm/lvm.conf',
+        help='Path to LVM configuration file'
+    )
 ]
 
 CONF = cfg.CONF
@@ -58,6 +87,48 @@ class BootLoaderAction(base.BaseAction, mixins.MountableMixin):
     def execute(self):
         self.do_bootloader()
 
+    def _override_lvm_config(self, chroot):
+        # NOTE(sslypushenko) Due to possible races between LVM and multipath,
+        # we need to adjust LVM devices filter.
+        # This code is required only for Ubuntu 14.04, because in trusty,
+        # LVM filters, does not recognize partions on multipath devices
+        # out of the box. It is fixed in latest LVM versions
+        multipath_devs = [parted.name
+                          for parted in self.driver.partition_scheme.parteds
+                          if hw.is_multipath_device(parted.name)]
+        # If there are no multipath devices on the node, we should not do
+        # anything to prevent regression.
+        if multipath_devs:
+            # We need to explicitly whitelist each non-mutlipath device
+            lvm_filter = []
+            for parted in self.driver.partition_scheme.parteds:
+                device = parted.name
+                if device in multipath_devs:
+                    continue
+                # We use devlinks from /dev/disk/by-id instead of /dev/sd*,
+                # because the first one are persistent.
+                devlinks_by_id = [
+                    link for link in hw.udevreport(device).get('DEVLINKS', [])
+                    if link.startswith('/dev/disk/by-id/')]
+                for link in devlinks_by_id:
+                    lvm_filter.append(
+                        'a|^{}(p)?(-part)?[0-9]*|'.format(link))
+
+            # Multipath devices should be whitelisted. All other devlinks
+            # should be blacklisted, to prevent LVM from grubbing underlying
+            # multipath devices.
+            lvm_filter.extend(CONF.lvm_filter_for_mpath)
+            # Setting devices/preferred_names also helps LVM to find devices by
+            # the proper devlinks
+            bu.override_lvm_config(
+                chroot,
+                {'devices': {
+                    'scan': CONF.mpath_lvm_scan_dirs,
+                    'global_filter': lvm_filter,
+                    'preferred_names': CONF.mpath_lvm_preferred_names}},
+                lvm_conf_path=CONF.lvm_conf_path,
+                update_initramfs=True)
+
     def do_bootloader(self):
         LOG.debug('--- Installing bootloader (do_bootloader) ---')
         chroot = '/tmp/target'
@@ -73,6 +144,7 @@ class BootLoaderAction(base.BaseAction, mixins.MountableMixin):
                 raise errors.WrongPartitionSchemeError(
                     'Error: device with / mountpoint has not been found')
 
+            self._override_lvm_config(chroot)
             grub = self.driver.grub
 
             guessed_version = gu.guess_grub_version(chroot=chroot)

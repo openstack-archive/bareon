@@ -126,6 +126,8 @@ cli_opts = [
 CONF = cfg.CONF
 CONF.register_opts(opts)
 CONF.register_cli_opts(cli_opts)
+CONF.import_opt('mpath_lvm_preferred_names', 'bareon.actions.bootloader')
+CONF.import_opt('lvm_conf_path', 'bareon.actions.bootloader')
 
 LOG = logging.getLogger(__name__)
 
@@ -495,9 +497,13 @@ class Manager(BaseDeployDriver):
             bu.dump_runtime_uuid(bs_scheme.uuid,
                                  os.path.join(chroot,
                                               'etc/nailgun-agent/config.yaml'))
-            bu.append_lvm_devices_filter(chroot, CONF.multipath_lvm_filter,
-                                         CONF.lvm_conf_path)
-
+            # NOTE(sslypushenko) Preferred names in LVM config should updated
+            # due to point LVM to work only with /dev/mapper folder
+            bu.override_lvm_config(
+                chroot,
+                {'devices': {
+                    'preferred_names': CONF.mpath_lvm_preferred_names}},
+                lvm_conf_path=CONF.lvm_conf_path)
             root = driver_os.get_user_by_name('root')
             bu.do_post_inst(chroot,
                             hashed_root_password=root.hashed_password,
