@@ -114,7 +114,7 @@ This folder contains the python code: drivers, objects, unit tests and utils, ma
 
 - bareon/cmd/agent.py
     * That is where executable entry points are. It reads input data and
-      instantiates Manager class with these data.
+      instantiates DeployDriver class with these data.
 - bareon/manager.py
     * That is the file where the top level agent logic is implemented.
       It contains all those methods which do something useful (do_*)

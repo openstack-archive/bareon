@@ -68,10 +68,14 @@ class ExecuteTestCase(unittest2.TestCase):
 
     def setUp(self):
         super(ExecuteTestCase, self).setUp()
-        fake_driver = stevedore.extension.Extension('fake_driver', None, None,
-                                                    mock.MagicMock)
-        self.drv_manager = stevedore.driver.DriverManager.make_test_instance(
-            fake_driver)
+        fake_deploy_driver = stevedore.extension.Extension(
+            'fake_deploy_driver', None, None, mock.MagicMock)
+        fake_data_driver = stevedore.extension.Extension(
+            'fake_deploy_driver', None, None, mock.MagicMock)
+        self.drv_data_mgr = stevedore.driver.DriverManager.make_test_instance(
+            fake_data_driver)
+        self.drv_depl_mgr = stevedore.driver.DriverManager.make_test_instance(
+            fake_deploy_driver)
 
     def test_parse_unit(self):
         self.assertEqual(utils.parse_unit('1.00m', 'm', ceil=True), 1)
@@ -117,10 +121,17 @@ class ExecuteTestCase(unittest2.TestCase):
                          mock_sleep.call_args_list)
 
     @mock.patch('stevedore.driver.DriverManager')
-    def test_get_driver(self, mock_drv_manager):
-        mock_drv_manager.return_value = self.drv_manager
+    def test_get_deploy_driver(self, mock_drv_manager):
+        mock_drv_manager.return_value = self.drv_depl_mgr
         self.assertEqual(mock.MagicMock.__name__,
-                         utils.get_driver('fake_driver').__name__)
+                         utils.get_deploy_driver('fake_deploy_driver').
+                         __name__)
+
+    @mock.patch('stevedore.driver.DriverManager')
+    def test_get_data_driver(self, mock_drv_manager):
+        mock_drv_manager.return_value = self.drv_data_mgr
+        self.assertEqual(mock.MagicMock.__name__,
+                         utils.get_data_driver('fake_data_driver').__name__)
 
     @mock.patch('jinja2.Environment')
     @mock.patch('jinja2.FileSystemLoader')
@@ -255,7 +266,7 @@ class ExecuteTestCase(unittest2.TestCase):
     @mock.patch.object(utils, 'execute')
     def test_udevadm_settle(self, mock_exec):
         utils.udevadm_settle()
-        mock_exec.assert_called_once_with('udevadm', 'settle', '--quiet',
+        mock_exec.assert_called_once_with('udevadm', 'settle',
                                           check_exit_code=[0])
 
 

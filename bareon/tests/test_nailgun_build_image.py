@@ -19,7 +19,7 @@ import six
 from six.moves.urllib.parse import urlsplit
 import unittest2
 
-from bareon.drivers.nailgun import NailgunBuildImage
+from bareon.drivers.data.nailgun import NailgunBuildImage
 from bareon import errors
 from bareon import objects
 
@@ -183,7 +183,7 @@ class TestNailgunBuildImage(unittest2.TestCase):
                          mock_deb.call_args_list[:len(REPOS_SAMPLE)])
         self.assertEqual(driver.operating_system.repos, repos)
 
-    @mock.patch('bareon.drivers.nailgun.objects.Loop')
+    @mock.patch('bareon.drivers.data.nailgun.objects.Loop')
     @mock.patch('bareon.objects.Image')
     @mock.patch('bareon.objects.FS')
     @mock.patch('bareon.objects.PartitionScheme')

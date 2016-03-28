@@ -343,6 +343,7 @@ class TestParted(unittest2.TestCase):
         assert serialized == {
             'label': 'label',
             'name': 'name',
+            'disk_size': None,
             'partitions': [
                 prt.to_dict(),
             ],
@@ -425,6 +426,9 @@ class TestFileSystem(unittest2.TestCase):
             'fs_options': 'some-option',
             'fs_label': 'some-label',
             'keep_data': False,
+            'fstab_enabled': True,
+            'fstab_options': 'defaults',
+            'os_id': []
         }
         new_fs = objects.FileSystem.from_dict(serialized)
         assert serialized == new_fs.to_dict()
