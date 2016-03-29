@@ -391,12 +391,12 @@ class PolicyPartitioner(object):
                                  % disks[0].get('name'))
             # It's safer to understate the physical disk size
             disk_size_mib = utils.B2MiB(disk_size_bytes, ceil=False)
-            if parted.size > disk_size_mib:
+            if parted.disk_size > disk_size_mib:
                 raise errors.NotEnoughSpaceError(
                     'Partition scheme for: %(disk)s exceeds the size of the '
                     'disk. Scheme size is %(scheme_size)s MiB, and disk size '
                     'is %(disk_size)s MiB.' % {
-                        'disk': parted.name, 'scheme_size': parted.size,
+                        'disk': parted.name, 'scheme_size': parted.disk_size,
                         'disk_size': disk_size_mib})
 
     def _handle_clean(self):
