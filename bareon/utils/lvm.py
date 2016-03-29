@@ -218,13 +218,23 @@ def lvcreate(vgname, lvname, size):
     # on allocated volume. '--yes' should be passed to avoid waiting for
     # user's confirmation:
     # "WARNING: <signature> signature detected on <device>. Wipe it? [y/n]"
+    # NOTE(oberezovskyi): '--wipesignatures' should be passed to wipe
+    # signatures
     # FIXME: the version of lvm2 shipped with Ubuntu 14.04 does not support
-    # --yes option. bareon should properly decomission the storage
-    # (Ubuntu installer does that just fine).
+    # --yes and --wipesignatures options. bareon should properly decomission
+    # the storage (Ubuntu installer does that just fine).
     stdout, stderr = utils.execute('lvcreate', '--help')
-    force_opt = '--yes' if '--yes' in stdout else ''
-    cmd = 'lvcreate {force_opt} -L {size}m -n {lvname} {vgname}'.format(
-        size=size, lvname=lvname, vgname=vgname, force_opt=force_opt)
+
+    possible_force_opts = [('--yes', ''),
+                           ('--wipesignatures', 'y')]
+
+    force_opts = filter(lambda opt: opt[0] in stdout, possible_force_opts)
+    force_opts = ' '.join(map(' '.join, force_opts))
+
+    cmd = 'lvcreate {force_opts} -L {size}m -n {lvname} {vgname}'.format(
+        size=size, lvname=lvname, vgname=vgname,
+        force_opts=force_opts)
+
     utils.execute(*cmd.split(), check_exit_code=[0])
 
 
