@@ -19,11 +19,14 @@ import six
 
 
 @six.add_metaclass(abc.ABCMeta)
-class BaseDeployDriver(object):
+class SimpleDeployDriver(object):
     """Deploy driver API"""
 
     def __init__(self, data_driver):
         self.driver = data_driver
+
+
+class BaseDeployDriver(SimpleDeployDriver):
 
     @abc.abstractmethod
     def do_partitioning(self):
