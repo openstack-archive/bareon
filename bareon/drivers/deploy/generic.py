@@ -17,11 +17,10 @@ import json
 import os
 import re
 
-from contextlib import contextmanager
-
 from oslo_config import cfg
 
 from bareon.drivers.deploy.base import BaseDeployDriver
+from bareon.drivers.deploy import mixins
 from bareon import errors
 from bareon.openstack.common import log as logging
 from bareon.utils import fs as fu
@@ -66,7 +65,7 @@ LOG = logging.getLogger(__name__)
 
 
 # TODO(lobur): This driver mostly copies nailgun driver. Need to merge them.
-class GenericDeployDriver(BaseDeployDriver):
+class GenericDeployDriver(BaseDeployDriver, mixins.MountableMixin):
 
     def do_reboot(self):
         LOG.debug('--- Rebooting node (do_reboot) ---')
@@ -284,67 +283,6 @@ class GenericDeployDriver(BaseDeployDriver):
                   'current_element': boot_id}
         with open('/tmp/boot_entries.json', 'w') as boot_entries_file:
             json.dump(result, boot_entries_file)
-
-    def _mount_target(self, mount_dir, os_id, pseudo=True, treat_mtab=True):
-        LOG.debug('Mounting target file systems: %s', mount_dir)
-        # Here we are going to mount all file systems in partition schema.
-        for fs in self.driver.partition_scheme.fs_sorted_by_depth(os_id):
-            if fs.mount == 'swap':
-                continue
-            mount = os.path.join(mount_dir, fs.mount.strip(os.sep))
-            utils.makedirs_if_not_exists(mount)
-            fu.mount_fs(fs.type, str(fs.device), mount)
-
-        if pseudo:
-            for path in ('/sys', '/dev', '/proc'):
-                utils.makedirs_if_not_exists(
-                    os.path.join(mount_dir, path.strip(os.sep)))
-                fu.mount_bind(mount_dir, path)
-
-        if treat_mtab:
-            mtab = utils.execute('chroot', mount_dir, 'grep', '-v', 'rootfs',
-                                 '/proc/mounts')[0]
-            mtab_path = os.path.join(mount_dir, 'etc/mtab')
-            if os.path.islink(mtab_path):
-                os.remove(mtab_path)
-            with open(mtab_path, 'wb') as f:
-                f.write(mtab)
-
-    def _umount_target(self, mount_dir, os_id, pseudo=True):
-        LOG.debug('Umounting target file systems: %s', mount_dir)
-        if pseudo:
-            for path in ('/proc', '/dev', '/sys'):
-                fu.umount_fs(os.path.join(mount_dir, path.strip(os.sep)),
-                             try_lazy_umount=True)
-        for fs in self.driver.partition_scheme.fs_sorted_by_depth(os_id,
-                                                                  True):
-            if fs.mount == 'swap':
-                continue
-            fu.umount_fs(os.path.join(mount_dir, fs.mount.strip(os.sep)))
-
-    @contextmanager
-    def mount_target(self, mount_dir, os_id, pseudo=True, treat_mtab=True):
-        self._mount_target(mount_dir, os_id, pseudo=pseudo,
-                           treat_mtab=treat_mtab)
-        try:
-            yield
-        finally:
-            self._umount_target(mount_dir, os_id, pseudo)
-
-    @contextmanager
-    def _mount_bootloader(self, mount_dir):
-        fs = filter(lambda fss: fss.mount == 'multiboot',
-                    self.driver.partition_scheme.fss)
-        if len(fs) > 1:
-            raise errors.WrongPartitionSchemeError(
-                'Multiple multiboot partitions found')
-
-        utils.makedirs_if_not_exists(mount_dir)
-        fu.mount_fs(fs[0].type, str(fs[0].device), mount_dir)
-
-        yield pu.get_uuid(fs[0].device)
-
-        fu.umount_fs(mount_dir)
 
 
 class PolicyPartitioner(object):
