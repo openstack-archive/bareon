@@ -1,0 +1,9 @@
+Code-Review+1: Avinash Raghavendra <avinash.raghavendra@ericsson.com>
+Code-Review+2: Aleksandr Gordeev <agordeev@mirantis.com>
+Workflow+1: Aleksandr Gordeev <agordeev@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 05 Apr 2016 09:50:39 +0000
+Reviewed-on: https://review.openstack.org/301199
+Project: openstack/bareon
+Branch: refs/heads/master
