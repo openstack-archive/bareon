@@ -30,8 +30,7 @@ LOG = logging.getLogger(__name__)
 # (only in 2.6 kernels)
 # KVM virtio volumes have major number 254 in Debian
 VALID_MAJORS = (3, 8, 9, 65, 66, 67, 68, 69, 70, 71, 104, 105, 106, 107, 108,
-                109, 110, 111, 202, 252, 253, 254, 259)
-
+                109, 110, 111, 202, 251, 252, 253, 254, 259)
 
 # We are only interested in getting these
 # properties from udevadm report

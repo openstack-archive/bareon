@@ -328,9 +328,9 @@ supports-register-dump: yes
         # look at kernel/Documentation/devices.txt
         # KVM virtio volumes have major number 254 in Debian
         mock_breport.return_value = {}
-        valid_majors = [3, 8, 9, 259, 65, 66, 67, 68, 69, 70, 71, 202, 104,
-                        105, 106, 107, 108, 109, 110, 111, 252, 253, 254]
-
+        valid_majors = [3, 8, 9, 65, 66, 67, 68, 69, 70, 71, 104, 105,
+                        106, 107, 108, 109, 110, 111, 202, 251, 252, 253,
+                        254, 259]
         for major in (set(range(1, 261)) - set(valid_majors)):
             uspec = {
                 'MAJOR': str(major)
