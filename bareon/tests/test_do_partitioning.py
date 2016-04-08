@@ -228,7 +228,7 @@ class TestManagerMultipathPartition(unittest2.TestCase):
 
         mock_fu_mf_expected_calls = [
             mock.call('ext2', '', '', '/dev/mapper/12312-part3'),
-            mock.call('ext4', '', '', '/dev/sdc1')]
+            mock.call('ext4', '', '', '/dev/sdc3')]
         self.assertEqual(mock_fu_mf_expected_calls,
                          mock_fu.make_fs.call_args_list)
 
@@ -242,7 +242,7 @@ class TestManagerMultipathPartition(unittest2.TestCase):
             self.assertEqual(call, mock.call(attempts=10))
 
         self.assertEqual(len(mock_utils.udevadm_trigger_blocks.call_args_list),
-                         6)
+                         8)
 
         self.assertEqual(mock_pu.make_label.mock_calls, [
             mock.call('/dev/mapper/12312', 'gpt'),
@@ -254,7 +254,10 @@ class TestManagerMultipathPartition(unittest2.TestCase):
             mock.call('/dev/mapper/12312', 225, 425, 'primary'),
             mock.call('/dev/mapper/12312', 425, 625, 'primary'),
             mock.call('/dev/mapper/12312', 625, 645, 'primary'),
-            mock.call('/dev/sdc', 1, 201, 'primary')])
+            mock.call('/dev/sdc', 1, 25, 'primary'),
+            mock.call('/dev/sdc', 25, 225, 'primary'),
+            mock.call('/dev/sdc', 225, 425, 'primary')])
 
         self.assertEqual(mock_pu.set_partition_flag.mock_calls, [
-            mock.call('/dev/mapper/12312', 1, 'bios_grub')])
+            mock.call('/dev/mapper/12312', 1, 'bios_grub'),
+            mock.call('/dev/sdc', 1, 'bios_grub')])
