@@ -20,6 +20,7 @@ import unittest2
 
 from oslo_config import cfg
 
+from bareon.actions import partitioning
 from bareon.drivers.deploy import generic
 from bareon import errors
 from bareon.objects.partition.fs import FileSystem
@@ -548,8 +549,11 @@ class TestPolicyPartitioner(unittest2.TestCase):
         )
 
         self.pp = generic.PolicyPartitioner(self.driver)
-        self.clean_fs_mock = self.pp._do_clean_filesystems = mock.Mock()
-        self.part_mock = self.pp._do_partitioning = mock.Mock()
+        self.pp.partitioning = partitioning.PartitioningAction(self.driver)
+        self.pp.partitioning._do_clean_filesystems = mock.Mock()
+        self.pp.partitioning._do_partitioning = mock.Mock()
+        self.clean_fs_mock = self.pp.partitioning._do_clean_filesystems
+        self.part_mock = self.pp.partitioning._do_partitioning
 
     def test_partition_verify(self, cmp_mock):
         self.setup('verify', cmp_mock)
