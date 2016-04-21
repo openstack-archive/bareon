@@ -48,6 +48,6 @@ class TestFlowDriver(unittest2.TestCase):
         fake_data_driver.flow = expected_flow
         self.drv = flow.Flow(fake_data_driver)
         mock_stevedore.assert_called_once_with(
-            'bareon.do_actions', names=expected_flow,
+            'bareon.actions', names=expected_flow,
             invoke_on_load=True, invoke_args=(fake_data_driver,),
             name_order=True)

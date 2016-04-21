@@ -27,7 +27,7 @@ class Flow(base.SimpleDeployDriver, mixins.MountableMixin):
     def __init__(self, data_driver):
         super(Flow, self).__init__(data_driver)
         self.ext_mgr = stevedore.named.NamedExtensionManager(
-            'bareon.do_actions', names=self.driver.flow,
+            'bareon.actions', names=self.driver.flow,
             invoke_on_load=True, invoke_args=(self.driver, ),
             name_order=True)
 
