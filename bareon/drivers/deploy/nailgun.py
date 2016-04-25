@@ -21,6 +21,7 @@ from oslo_config import cfg
 import six
 import yaml
 
+from bareon.actions import configdrive
 from bareon.actions import partitioning
 from bareon.drivers.deploy.base import BaseDeployDriver
 from bareon import errors
@@ -127,63 +128,7 @@ class Manager(BaseDeployDriver):
         partitioning.PartitioningAction(self.driver).execute()
 
     def do_configdrive(self):
-        LOG.debug('--- Creating configdrive (do_configdrive) ---')
-        if CONF.prepare_configdrive:
-            cc_output_path = os.path.join(CONF.tmp_path, 'cloud_config.txt')
-            bh_output_path = os.path.join(CONF.tmp_path, 'boothook.txt')
-            # NOTE:file should be strictly named as 'user-data'
-            #      the same is for meta-data as well
-            ud_output_path = os.path.join(CONF.tmp_path, 'user-data')
-            md_output_path = os.path.join(CONF.tmp_path, 'meta-data')
-
-            tmpl_dir = CONF.nc_template_path
-            utils.render_and_save(
-                tmpl_dir,
-                self.driver.configdrive_scheme.template_names('cloud_config'),
-                self.driver.configdrive_scheme.template_data(),
-                cc_output_path
-            )
-            utils.render_and_save(
-                tmpl_dir,
-                self.driver.configdrive_scheme.template_names('boothook'),
-                self.driver.configdrive_scheme.template_data(),
-                bh_output_path
-            )
-            utils.render_and_save(
-                tmpl_dir,
-                self.driver.configdrive_scheme.template_names('meta_data'),
-                self.driver.configdrive_scheme.template_data(),
-                md_output_path
-            )
-
-            utils.execute(
-                'write-mime-multipart',
-                '--output=%s' % ud_output_path,
-                '%s:text/cloud-boothook' % bh_output_path,
-                '%s:text/cloud-config' % cc_output_path)
-            utils.execute('genisoimage', '-output', CONF.config_drive_path,
-                          '-volid', 'cidata', '-joliet', '-rock',
-                          ud_output_path, md_output_path)
-
-        if CONF.prepare_configdrive or os.path.isfile(CONF.config_drive_path):
-            self._add_configdrive_image()
-
-    def _add_configdrive_image(self):
-        configdrive_device = self.driver.partition_scheme.configdrive_device()
-        if configdrive_device is None:
-            raise errors.WrongPartitionSchemeError(
-                'Error while trying to get configdrive device: '
-                'configdrive device not found')
-        size = os.path.getsize(CONF.config_drive_path)
-        md5 = utils.calculate_md5(CONF.config_drive_path, size)
-        self.driver.image_scheme.add_image(
-            uri='file://%s' % CONF.config_drive_path,
-            target_device=configdrive_device,
-            format='iso9660',
-            container='raw',
-            size=size,
-            md5=md5,
-        )
+        configdrive.ConfigDriveAction(self.driver).execute()
 
     def do_copyimage(self):
         LOG.debug('--- Copying images (do_copyimage) ---')
