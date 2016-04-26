@@ -28,7 +28,8 @@ LOG = logging.getLogger(__name__)
 
 class MountableMixin(object):
 
-    def _mount_target(self, mount_dir, os_id, pseudo=True, treat_mtab=True):
+    def _mount_target(self, mount_dir, os_id=None, pseudo=True,
+                      treat_mtab=True):
         LOG.debug('Mounting target file systems: %s', mount_dir)
         # Here we are going to mount all file systems in partition schema.
         for fs in self.driver.partition_scheme.fs_sorted_by_depth(os_id):
@@ -53,10 +54,11 @@ class MountableMixin(object):
             with open(mtab_path, 'wb') as f:
                 f.write(mtab)
 
-    def _umount_target(self, mount_dir, os_id, pseudo=True):
+    def _umount_target(self, mount_dir, os_id=None, pseudo=True):
         LOG.debug('Umounting target file systems: %s', mount_dir)
         if pseudo:
-            for path in ('/proc', '/dev', '/sys'):
+            # umount fusectl (typically mounted at /sys/fs/fuse/connections)
+            for path in ('/proc', '/dev', '/sys/fs/fuse/connections', '/sys'):
                 fu.umount_fs(os.path.join(mount_dir, path.strip(os.sep)),
                              try_lazy_umount=True)
         for fs in self.driver.partition_scheme.fs_sorted_by_depth(os_id,
@@ -66,13 +68,14 @@ class MountableMixin(object):
             fu.umount_fs(os.path.join(mount_dir, fs.mount.strip(os.sep)))
 
     @contextmanager
-    def mount_target(self, mount_dir, os_id, pseudo=True, treat_mtab=True):
-        self._mount_target(mount_dir, os_id, pseudo=pseudo,
+    def mount_target(self, mount_dir, os_id=None, pseudo=True,
+                     treat_mtab=True):
+        self._mount_target(mount_dir, os_id=os_id, pseudo=pseudo,
                            treat_mtab=treat_mtab)
         try:
             yield
         finally:
-            self._umount_target(mount_dir, os_id, pseudo)
+            self._umount_target(mount_dir, os_id=os_id, pseudo=pseudo)
 
     @contextmanager
     def _mount_bootloader(self, mount_dir):
