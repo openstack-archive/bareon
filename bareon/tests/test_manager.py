@@ -65,10 +65,10 @@ class TestImageBuild(unittest2.TestCase):
         self.mgr = bareon.drivers.deploy.nailgun(image_conf)
 
     @mock.patch.object(bareon.drivers.deploy.nailgun, '_set_apt_repos')
-    @mock.patch('bareon.drivers.deploy.nailgun.bu', create=True)
-    @mock.patch('bareon.drivers.deploy.nailgun.fu', create=True)
-    @mock.patch('bareon.drivers.deploy.nailgun.utils', create=True)
-    @mock.patch('bareon.drivers.deploy.nailgun.os', create=True)
+    @mock.patch('bareon.drivers.deploy.nailgun.bu', autospec=True)
+    @mock.patch('bareon.drivers.deploy.nailgun.fu', autospec=True)
+    @mock.patch('bareon.drivers.deploy.nailgun.utils', autospec=True)
+    @mock.patch('bareon.drivers.deploy.nailgun.os', autospec=True)
     @mock.patch('bareon.drivers.deploy.nailgun.shutil.move')
     @mock.patch('bareon.drivers.deploy.nailgun.open',
                 create=True, new_callable=mock.mock_open)

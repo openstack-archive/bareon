@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import os
+import six
 
 from contextlib import contextmanager
 
@@ -51,8 +52,8 @@ class MountableMixin(object):
             mtab_path = os.path.join(mount_dir, 'etc/mtab')
             if os.path.islink(mtab_path):
                 os.remove(mtab_path)
-            with open(mtab_path, 'wb') as f:
-                f.write(mtab)
+            with open(mtab_path, 'wt', encoding='utf-8') as f:
+                f.write(six.text_type(mtab))
 
     def _umount_target(self, mount_dir, os_id=None, pseudo=True):
         LOG.debug('Umounting target file systems: %s', mount_dir)
