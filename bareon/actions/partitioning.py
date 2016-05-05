@@ -54,6 +54,12 @@ opts = [
         help='Allow to skip MD containers (fake raid leftovers) while '
              'cleaning the rest of MDs',
     ),
+    cfg.StrOpt(
+        'partition_alignment',
+        default='optimal',
+        help='Set alignment for newly created partitions, valid alignment '
+             'types are: none, cylinder, minimal, optimal'
+    ),
 ]
 
 CONF = cfg.CONF
@@ -101,7 +107,8 @@ class PartitioningAction(base.BaseAction):
         for parted in parteds:
             pu.make_label(parted.name, parted.label)
             for prt in parted.partitions:
-                pu.make_partition(prt.device, prt.begin, prt.end, prt.type)
+                pu.make_partition(prt.device, prt.begin, prt.end, prt.type,
+                                  alignment=CONF.partition_alignment)
                 utils.udevadm_trigger_blocks()
                 for flag in prt.flags:
                     pu.set_partition_flag(prt.device, prt.count, flag)

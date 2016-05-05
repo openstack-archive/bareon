@@ -19,6 +19,7 @@ from bareon.openstack.common import log as logging
 from bareon.utils import utils
 
 LOG = logging.getLogger(__name__)
+PARTITION_ALIGMENT = ('none', 'cylinder', 'minimal', 'optimal')
 
 
 def parse_partition_info(parted_output):
@@ -159,12 +160,27 @@ def set_gpt_type(dev, num, type_guid):
                   dev, check_exit_code=[0])
 
 
-def make_partition(dev, begin, end, ptype):
+def make_partition(dev, begin, end, ptype, alignment='optimal'):
+    """Creates a partition on the device.
+
+    :param dev: A device file, e.g. /dev/sda.
+    :param begin: Beginning of the partition.
+    :param end: Ending of the partition.
+    :param ptype: Partition type: primary or logical.
+    :param alignment: Set alignment mode for newly created partitions,
+    valid alignment types are: none, cylinder, minimal, optimal. For more
+    information about this you can find in GNU parted manual.
+
+    :returns: None
+    """
     LOG.debug('Trying to create a partition: dev=%s begin=%s end=%s' %
               (dev, begin, end))
     if ptype not in ('primary', 'logical'):
         raise errors.WrongPartitionSchemeError(
             'Wrong partition type: %s' % ptype)
+    if alignment not in PARTITION_ALIGMENT:
+        raise errors.WrongPartitionSchemeError(
+            'Wrong partition alignment requested: %s' % alignment)
 
     # check begin >= end
     if begin >= end:
@@ -180,7 +196,7 @@ def make_partition(dev, begin, end, ptype):
 
     utils.udevadm_settle()
     out, err = utils.execute(
-        'parted', '-a', 'optimal', '-s', dev, 'unit', 'MiB',
+        'parted', '-a', alignment, '-s', dev, 'unit', 'MiB',
         'mkpart', ptype, str(begin), str(end), check_exit_code=[0, 1])
     LOG.debug('Parted output: \n%s' % out)
     reread_partitions(dev, out=out)
