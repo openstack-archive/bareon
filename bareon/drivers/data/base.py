@@ -28,9 +28,8 @@ class BaseDataDriver(object):
 
     def __init__(self, data):
         self.data = copy.deepcopy(data)
-        self.flow = []
-        if self.data and self.data.get('flow'):
-            self.flow = self.data.get('flow', [])
+        if 'flow' in self.data:
+            self.flow = self.data['flow']
 
 
 @six.add_metaclass(abc.ABCMeta)

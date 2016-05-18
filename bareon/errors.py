@@ -182,3 +182,11 @@ class IncorrectChroot(BaseError):
 
 class TooManyKernels(BaseError):
     pass
+
+
+class EmptyCustomFlow(BaseError):
+    pass
+
+
+class NonexistingFlow(BaseError):
+    pass

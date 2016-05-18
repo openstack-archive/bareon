@@ -17,6 +17,7 @@ import unittest2
 
 from bareon.actions import base as base_action
 from bareon.drivers.deploy import flow
+from bareon import errors
 
 import stevedore
 
@@ -28,12 +29,18 @@ elif six.PY3:
 
 class TestFlowDriver(unittest2.TestCase):
 
+    def setUp(self):
+        super(TestFlowDriver, self).setUp()
+        self.data_drv = mock.Mock(data={}, flow='custom')
+
     @mock.patch.object(flow.Flow, '__init__',
                        return_value=None)
-    def test_execute_flow(self, mock_init):
+    @mock.patch.object(flow, 'FLOWS', return_value={'fake_flow': ['foo']})
+    def test_execute_flow(self, mock_flows, mock_init):
         fake_ext = mock.Mock(spec=base_action.BaseAction)
         fake_ext.name = 'foo'
-        self.drv = flow.Flow('fake_data_driver')
+        self.data_drv.flow = 'fake_flow'
+        self.drv = flow.Flow(self.data_drv)
         self.drv.ext_mgr = stevedore.NamedExtensionManager.make_test_instance(
             [fake_ext], namespace='TESTING')
         self.drv.execute_flow()
@@ -42,12 +49,18 @@ class TestFlowDriver(unittest2.TestCase):
         fake_ext.execute.assert_called_once_with()
 
     @mock.patch('stevedore.named.NamedExtensionManager')
-    def test_init(self, mock_stevedore):
-        fake_data_driver = mock.Mock()
+    def test_init_succesfull_custom_flow(self, mock_stevedore):
         expected_flow = ['action1', 'action3']
-        fake_data_driver.flow = expected_flow
-        self.drv = flow.Flow(fake_data_driver)
+        self.data_drv.data['custom_flow'] = expected_flow
+        self.drv = flow.Flow(self.data_drv)
         mock_stevedore.assert_called_once_with(
             'bareon.actions', names=expected_flow,
-            invoke_on_load=True, invoke_args=(fake_data_driver,),
+            invoke_on_load=True, invoke_args=(self.data_drv,),
             name_order=True)
+
+    def test_init_empty_custom_flow_failed(self):
+        self.assertRaises(errors.EmptyCustomFlow, flow.Flow, self.data_drv)
+
+    def test_init_invalid_flow_failed(self):
+        self.data_drv.flow = 'invalid'
+        self.assertRaises(errors.NonexistingFlow, flow.Flow, self.data_drv)

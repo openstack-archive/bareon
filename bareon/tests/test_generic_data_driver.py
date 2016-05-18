@@ -22,7 +22,7 @@ from bareon.drivers.data import generic
 class TestKsDisks(unittest2.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestKsDisks, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver(None)
+        self.driver = generic.GenericDataDriver({})
         self.driver._partition_data = self.mock_part_data = mock.MagicMock()
 
     def test_no_partition_data(self):
@@ -74,7 +74,7 @@ class TestKsDisks(unittest2.TestCase):
 class TestKsVgs(unittest2.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestKsVgs, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver(None)
+        self.driver = generic.GenericDataDriver({})
         self.driver._partition_data = self.mock_part_data = mock.MagicMock()
 
     def test_no_partition_data(self):
@@ -114,7 +114,7 @@ class TestKsVgs(unittest2.TestCase):
 class TestSmallKsDisks(unittest2.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestSmallKsDisks, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver(None)
+        self.driver = generic.GenericDataDriver({})
         self.driver._partition_data = self.mock_part_data = mock.MagicMock()
 
     def test_no_partition_data(self):
@@ -154,7 +154,7 @@ class TestSmallKsDisks(unittest2.TestCase):
 class TestGetLabel(unittest2.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestGetLabel, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver(None)
+        self.driver = generic.GenericDataDriver({})
 
     def test_no_label(self):
         label = None
