@@ -115,8 +115,17 @@ opts = [
     ),
 ]
 
+cli_opts = [
+    cfg.StrOpt(
+        'image_build_dir',
+        default='/tmp',
+        help='Directory where the image is supposed to be built',
+    ),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(opts)
+CONF.register_cli_opts(cli_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -562,9 +571,9 @@ class Manager(BaseDeployDriver):
             return
         LOG.debug('At least one of the necessary images is unavailable. '
                   'Starting build process.')
+        chroot = bu.mkdtemp_smart(
+            CONF.image_build_dir, CONF.image_build_suffix)
         try:
-            chroot = bu.mkdtemp_smart(
-                CONF.image_build_dir, CONF.image_build_suffix)
             self.install_base_os(chroot)
             packages = self.driver.operating_system.packages
             metadata['packages'] = packages

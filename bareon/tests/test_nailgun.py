@@ -790,7 +790,6 @@ SINGLE_NVME_DISK_KS_SPACES = [
 ]
 
 
-@unittest2.skip("Fix after cray rebase")
 class TestNailgunMatch(unittest2.TestCase):
     def test_match_device_by_id_matches(self):
         # matches by 'by-id' links
@@ -904,7 +903,6 @@ class TestNailgunMatch(unittest2.TestCase):
         self.assertFalse(nailgun.match_device(fake_hu_disk, fake_ks_disk))
 
 
-@unittest2.skip
 @mock.patch.object(nailgun.Nailgun, '__init__', return_value=None)
 class TestNailgunGetOSMethods(unittest2.TestCase):
     def test_parse_operating_system_test_profiles(self, mock_nailgun):
@@ -940,7 +938,6 @@ class TestNailgunGetOSMethods(unittest2.TestCase):
                 self.assertEqual('unknown', os_name)
 
 
-@unittest2.skip("Fix after cray rebase")
 @mock.patch.object(nailgun.Nailgun, 'parse_image_meta', return_value={})
 @mock.patch('bareon.drivers.data.nailgun.hu.list_block_devices')
 class TestNailgunMockedMeta(unittest2.TestCase):
@@ -1289,7 +1286,6 @@ class TestNailgunMockedMeta(unittest2.TestCase):
         self.assertEqual('default', drv.partition_scheme.mds[0].metadata)
 
 
-@unittest2.skip("Fix after cray rebase")
 @mock.patch.object(utils, 'init_http_request')
 @mock.patch('bareon.drivers.data.nailgun.hu.list_block_devices')
 class TestNailgunImageMeta(unittest2.TestCase):

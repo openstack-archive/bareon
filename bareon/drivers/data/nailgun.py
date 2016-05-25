@@ -454,9 +454,9 @@ class Nailgun(BaseDataDriver,
 
         # TODO(lobur): port https://review.openstack.org/#/c/261562/ to fix
         # # checking if /boot is created
-        # if not self._boot_partition_done or not self._boot_done:
-        #     raise errors.WrongPartitionSchemeError(
-        #         '/boot partition has not been created for some reasons')
+        if not self._boot_partition_done or not self._boot_done:
+            raise errors.WrongPartitionSchemeError(
+                '/boot partition has not been created for some reasons')
 
         LOG.debug('Looping over all volume groups in provision data')
         for vg in self.ks_vgs:

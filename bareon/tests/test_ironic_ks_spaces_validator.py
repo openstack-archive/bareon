@@ -192,7 +192,6 @@ class TestKSSpacesValidator(unittest2.TestCase):
         self.assertRaises(errors.WrongPartitionSchemeError,
                           kssv.validate, self.fake_scheme[-2:], 'ironic')
 
-    @unittest2.skip("Fix after cray rebase")
     def test_validate_16T_root_volume_fail(self):
         self.fake_scheme[3]['volumes'][0]['size'] = 16777216 + 1
         self.assertRaises(errors.WrongPartitionSchemeError,

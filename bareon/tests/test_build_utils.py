@@ -153,7 +153,6 @@ class BuildUtilsTestCase(unittest2.TestCase):
         self.assertEqual([mock.call('chroot', f) for f in files],
                          mock_path.join.call_args_list)
 
-    @unittest2.skip("Fix after cray rebase")
     @mock.patch.object(bu, 'remove_files')
     @mock.patch.object(bu, 'clean_dirs')
     def test_clean_apt_settings(self, mock_dirs, mock_files):
@@ -173,7 +172,10 @@ class BuildUtilsTestCase(unittest2.TestCase):
         mock_files.assert_called_once_with(
             'chroot', ['etc/apt/sources.list', 'etc/apt/preferences',
                        'etc/apt/apt.conf.d/%s' % 'force_ipv4',
-                       'etc/apt/apt.conf.d/%s' % 'unsigned'])
+                       'etc/apt/apt.conf.d/%s' % 'unsigned',
+                       'etc/apt/apt.conf.d/01bareon-use-proxy-ftp',
+                       'etc/apt/apt.conf.d/01bareon-use-proxy-http',
+                       'etc/apt/apt.conf.d/01bareon-use-proxy-https'])
 
     @mock.patch('bareon.utils.build.open',
                 create=True, new_callable=mock.mock_open)
