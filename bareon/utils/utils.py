@@ -402,6 +402,28 @@ def text_diff(text1, text2, sfrom="from", sto="to"):
     return "\n".join(diff)
 
 
+def human2bytes(value, default='MiB', target='MiB'):
+    symbols = {'custom': ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'),
+               'iec': ('KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB')}
+    bytes = {}
+    bytes.update({e: 1000.0 ** n for n, e in enumerate(symbols['custom'])})
+    bytes.update({e: 1024.0 ** n for n, e in enumerate(symbols['iec'], 1)})
+    try:
+        number = ''
+        prefix = default
+        for index, letter in enumerate(value):
+            if letter and letter.isdigit() or letter == '.':
+                number += letter
+            else:
+                if value[index] == ' ':
+                    index += 1
+                prefix = value[index:]
+                break
+        return int(float(number) * bytes[prefix] / bytes[target])
+    except Exception as ex:
+        raise ValueError('Can\'t convert size %s. Error: %s' % (value, ex))
+
+
 def list_opts():
     """Returns a list of oslo.config options available in the library.
 

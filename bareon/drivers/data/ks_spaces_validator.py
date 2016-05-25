@@ -47,10 +47,10 @@ def validate(data, schema_file='nailgun'):
 
     # TODO(lobur): Must be done after unit conversion
     # for space in data:
-    #     for volume in space.get('volumes', []):
-    #         if volume['size'] > 16777216 and volume.get('mount') == '/':
-    #             raise errors.WrongPartitionSchemeError(
-    #                 'Root file system must be less than 16T')
+    #    for volume in space.get('volumes', []):
+    #        if volume['size'] > 16777216 and volume.get('mount') == '/':
+    #            raise errors.WrongPartitionSchemeError(
+    #                'Root file system must be less than 16T')
 
     # TODO(kozhukalov): need to have additional logical verifications
     # maybe sizes and format of string values

@@ -486,6 +486,19 @@ class GetIPTestCase(unittest2.TestCase):
         mock_execute.assert_called_once_with(*self.cmd)
 
 
+class TestHumantoBytesConverter(unittest2.TestCase):
+    def test_default_convertion(self):
+        result = utils.human2bytes('1000', default='GiB')
+        self.assertEqual(result, 1024000)
+
+    def test_target_convertion(self):
+        result = utils.human2bytes('1024 MiB', target='GiB')
+        self.assertEqual(result, 1)
+
+    def test_invalid_data(self):
+        self.assertRaises(ValueError, utils.human2bytes, 'invalid data')
+
+
 class ParseKernelCmdline(unittest2.TestCase):
 
     def test_parse_kernel_cmdline(self):

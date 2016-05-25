@@ -358,7 +358,7 @@ class TestFindHwFstab(unittest2.TestCase):
 
 
 class TestConvertStringSize(unittest2.TestCase):
-    @mock.patch.object(ironic, 'human2bytes')
+    @mock.patch.object(ironic.utils, 'human2bytes')
     def test_success_single_disk(self, mock_converter):
         data = {'image_deploy_flags': {'rsync_flags': '-a -A -X'},
                 'partitions': [{'extra': [],
@@ -378,7 +378,7 @@ class TestConvertStringSize(unittest2.TestCase):
             [mock.call('10000 MB'), mock.call('5 GB'), mock.call('4000')],
             any_order=True)
 
-    @mock.patch.object(ironic, 'human2bytes')
+    @mock.patch.object(ironic.utils, 'human2bytes')
     def test_success_two_disks(self, mock_converter):
         data = {'image_deploy_flags': {'rsync_flags': '-a -A -X'},
                 'partitions': [{'extra': [],
@@ -406,7 +406,7 @@ class TestConvertStringSize(unittest2.TestCase):
             [mock.call('10000 MB'), mock.call('5 GB'), mock.call('4000'),
              mock.call('2000 MB'), mock.call('2 GB')], any_order=True)
 
-    @mock.patch.object(ironic, 'human2bytes')
+    @mock.patch.object(ironic.utils, 'human2bytes')
     def test_success_lvm_meta_size(self, mock_converter):
         data = {'image_deploy_flags': {'rsync_flags': '-a -A -X'},
                 'partitions': [{'extra': [],
@@ -427,7 +427,7 @@ class TestConvertStringSize(unittest2.TestCase):
             [mock.call('10000 MB'), mock.call('5 GB'), mock.call('4 GB'),
              mock.call('64')], any_order=True)
 
-    @mock.patch.object(ironic, 'human2bytes')
+    @mock.patch.object(ironic.utils, 'human2bytes')
     def test_success_ignore_percent(self, mock_converter):
         data = {'image_deploy_flags': {'rsync_flags': '-a -A -X'},
                 'partitions': [{'extra': [],
@@ -447,7 +447,7 @@ class TestConvertStringSize(unittest2.TestCase):
             [mock.call('10000 MB'), mock.call('4000')],
             any_order=True)
 
-    @mock.patch.object(ironic, 'human2bytes')
+    @mock.patch.object(ironic.utils, 'human2bytes')
     def test_success_ignore_remaining(self, mock_converter):
         data = {'image_deploy_flags': {'rsync_flags': '-a -A -X'},
                 'partitions': [{'extra': [],
@@ -466,19 +466,6 @@ class TestConvertStringSize(unittest2.TestCase):
         mock_converter.assert_has_calls(
             [mock.call('10000 MB'), mock.call('4000')],
             any_order=True)
-
-
-class TestHumantoBytesConverter(unittest2.TestCase):
-    def test_default_convertion(self):
-        result = ironic.human2bytes('1000', default='GiB')
-        self.assertEqual(result, 1024000)
-
-    def test_target_convertion(self):
-        result = ironic.human2bytes('1024 MiB', target='GiB')
-        self.assertEqual(result, 1)
-
-    def test_invalid_data(self):
-        self.assertRaises(ValueError, ironic.human2bytes, 'invalid data')
 
 
 class TestConvertPercentSizes(unittest2.TestCase):

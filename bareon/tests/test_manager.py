@@ -19,8 +19,8 @@ from oslo_config import cfg
 import six
 import unittest2
 
-import bareon
 from bareon.drivers.data import nailgun as nailgun_data
+from bareon.drivers.deploy import nailgun as nailgun_deploy
 from bareon import objects
 from bareon.utils import utils
 
@@ -32,7 +32,6 @@ elif six.PY3:
 CONF = cfg.CONF
 
 
-@unittest2.skip("Fix after cray rebase")
 class TestImageBuild(unittest2.TestCase):
 
     @mock.patch('yaml.load')
@@ -62,26 +61,26 @@ class TestImageBuild(unittest2.TestCase):
             ],
             "codename": "trusty"
         }
-        self.mgr = bareon.drivers.deploy.nailgun(image_conf)
+        self.mgr = nailgun_deploy.Manager(
+            nailgun_data.NailgunBuildImage(image_conf))
 
-    @mock.patch.object(bareon.drivers.deploy.nailgun, '_set_apt_repos')
-    @mock.patch('bareon.drivers.deploy.nailgun.bu', autospec=True)
-    @mock.patch('bareon.drivers.deploy.nailgun.fu', autospec=True)
-    @mock.patch('bareon.drivers.deploy.nailgun.utils', autospec=True)
-    @mock.patch('bareon.drivers.deploy.nailgun.os', autospec=True)
-    @mock.patch('bareon.drivers.deploy.nailgun.shutil.move')
-    @mock.patch('bareon.drivers.deploy.nailgun.open',
-                create=True, new_callable=mock.mock_open)
-    @mock.patch('bareon.drivers.deploy.nailgun.yaml.safe_dump')
-    @mock.patch.object(bareon.drivers.deploy.nailgun, 'mount_target')
-    @mock.patch.object(bareon.drivers.deploy.nailgun, 'umount_target')
+    @mock.patch.object(nailgun_deploy.Manager, '_set_apt_repos')
+    @mock.patch.object(nailgun_deploy, 'bu', autospec=True)
+    @mock.patch.object(nailgun_deploy, 'fu', autospec=True)
+    @mock.patch.object(nailgun_deploy, 'utils', autospec=True)
+    @mock.patch.object(nailgun_deploy, 'os', autospec=True)
+    @mock.patch.object(nailgun_deploy.shutil, 'move')
+    @mock.patch.object(nailgun_deploy, 'open', create=True,
+                       new_callable=mock.mock_open)
+    @mock.patch.object(nailgun_deploy.yaml, 'safe_dump')
+    @mock.patch.object(nailgun_deploy.Manager, 'mount_target')
+    @mock.patch.object(nailgun_deploy.Manager, 'umount_target')
     def test_do_build_image(self, mock_umount_target, mock_mount_target,
                             mock_yaml_dump, mock_open, mock_shutil_move,
                             mock_os, mock_utils,
                             mock_fu, mock_bu, mock_set_apt_repos):
 
         loops = [objects.Loop(), objects.Loop()]
-
         self.mgr.driver._image_scheme = objects.ImageScheme([
             objects.Image('file:///fake/img.img.gz', loops[0], 'ext4', 'gzip'),
             objects.Image('file:///fake/img-boot.img.gz',
