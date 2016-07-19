@@ -1,0 +1,8 @@
+Code-Review+2: Aleksandr Gordeev <agordeev@mirantis.com>
+Workflow+1: Aleksandr Gordeev <agordeev@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 19 Jul 2016 17:18:38 +0000
+Reviewed-on: https://review.openstack.org/294241
+Project: openstack/bareon
+Branch: refs/heads/master
