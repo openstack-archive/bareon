@@ -36,7 +36,7 @@ class TestDoReboot(unittest2.TestCase):
     @mock.patch('bareon.utils.utils.execute')
     def test_do_reboot(self, mock_execute):
         result = self.driver.do_reboot()
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_execute.assert_called_once_with('reboot')
 
 
@@ -53,7 +53,7 @@ class TestDoProvision(unittest2.TestCase):
         self.driver.do_bootloader = mock_bootloader = mock.MagicMock()
 
         result = self.driver.do_provisioning()
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
         mock_partitioning.assert_called_once_with()
         mock_configdrive.assert_called_once_with()
@@ -70,7 +70,7 @@ class TestDoConfigDrive(unittest2.TestCase):
     def test_do_configdrive(self):
         result = self.driver.do_configdrive()
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         self.mock_data_driver.create_configdrive.assert_called_once_with()
 
 
@@ -91,7 +91,7 @@ class TestMountTarget(unittest2.TestCase):
 
         result = self.driver._mount_target(chroot, os_id, True,
                                            False)
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_makedirs.assert_has_calls([mock.call(chroot + path)
                                         for path in pseudo_fs], any_order=True)
         mock_mount_bind.assert_has_calls([mock.call(chroot, path)
@@ -114,7 +114,7 @@ class TestMountTarget(unittest2.TestCase):
         result = self.driver._mount_target(chroot, os_id, False,
                                            True)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_execute.assert_called_once_with('chroot', chroot, 'grep', '-v',
                                              'rootfs', '/proc/mounts')
         mock_islink.assert_called_once_with(chroot + '/etc/mtab')
@@ -137,7 +137,7 @@ class TestMountTarget(unittest2.TestCase):
         result = self.driver._mount_target(chroot, os_id, False,
                                            True)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_execute.assert_called_once_with('chroot', chroot, 'grep', '-v',
                                              'rootfs', '/proc/mounts')
         mock_islink.assert_called_once_with(chroot + '/etc/mtab')
@@ -159,7 +159,7 @@ class TestMountTarget(unittest2.TestCase):
         result = self.driver._mount_target(chroot, os_id, False,
                                            False)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_makedirs.assert_has_calls(
             [mock.call(os.path.join(chroot, f.mount.strip(os.sep))) for f
              in fss[1:]], any_order=True)
@@ -182,7 +182,7 @@ class TestMountTarget(unittest2.TestCase):
         result = self.driver._mount_target(chroot, os_id, False,
                                            False)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_makedirs.assert_has_calls(
             [mock.call(os.path.join(chroot, f.mount.strip(os.sep))) for f
              in fss], any_order=True)
@@ -208,7 +208,7 @@ class TestUmountTarget(unittest2.TestCase):
 
         result = self.driver._umount_target(chroot, True)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_umount_fs.assert_has_calls(
             [mock.call(chroot + path, try_lazy_umount=True) for path in
              pseudo_fs], any_order=True)
@@ -223,7 +223,7 @@ class TestUmountTarget(unittest2.TestCase):
         self.fs_sorted.return_value = fss
 
         result = self.driver._umount_target(chroot, os_id, False)
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_umount.assert_has_calls(
             [mock.call(os.path.join(chroot, f.mount.strip(os.sep))) for f
              in fss], any_order=True)
@@ -241,7 +241,7 @@ class TestUmountTarget(unittest2.TestCase):
 
         result = self.driver._umount_target(chroot, os_id, False)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_umount.assert_has_calls(
             [mock.call(os.path.join(chroot, f.mount.strip(os.sep))) for f
              in fss[1:]], any_order=True)
@@ -283,7 +283,7 @@ class TestDoBootloader(unittest2.TestCase):
 
         result = self.driver.do_singleboot_bootloader(chroot, os_id)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_grub2_cfg.assert_called_once_with(
             kernel_params=kernel_params,
             chroot=chroot,
@@ -318,7 +318,7 @@ class TestDoBootloader(unittest2.TestCase):
 
         result = self.driver.do_singleboot_bootloader(chroot, os_id)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_grub1_cfg.assert_called_once_with(kernel=kernel_name,
                                                initrd=initrd_name,
                                                kernel_params=kernel_params,
@@ -351,7 +351,7 @@ class TestDoBootloader(unittest2.TestCase):
 
         result = self.driver.do_singleboot_bootloader(chroot, os_id)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_grub2_cfg.assert_called_once_with(kernel_params=kernel_params,
                                                chroot=chroot,
                                                grub_timeout=CONF.grub_timeout,
@@ -383,7 +383,7 @@ class TestDoBootloader(unittest2.TestCase):
 
         result = self.driver.do_singleboot_bootloader(chroot, os_id)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_grub1_cfg.assert_called_once_with(kernel=kernel_name,
                                                initrd=initrd_name,
                                                kernel_params=kernel_params,
@@ -423,7 +423,7 @@ class TestDoBootloader(unittest2.TestCase):
 
         result = self.driver.do_singleboot_bootloader(chroot, os_id)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         mock_grub1_cfg.assert_called_once_with(kernel=kernel_name,
                                                initrd=initrd_name,
                                                kernel_params=kernel_params,
@@ -465,7 +465,7 @@ class TestGenerateFstab(unittest2.TestCase):
 
         result = self.driver.do_generate_fstab(chroot, 'test')
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
         file_mock.assert_has_calls(
             [mock.call.write('UUID=0 swap swap defaults 0 0\n'),
@@ -494,7 +494,7 @@ class TestGenerateFstab(unittest2.TestCase):
 
         result = self.driver.do_generate_fstab(chroot, 'test')
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
         file_mock.assert_has_calls(
             [mock.call.write('UUID=0 swap swap defaults 0 0\n'),
@@ -524,7 +524,7 @@ class TestGenerateFstab(unittest2.TestCase):
 
         result = self.driver.do_generate_fstab(chroot, 'test')
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
         file_mock.assert_has_calls(
             [mock.call.write('UUID=0 swap swap defaults 0 0\n'),

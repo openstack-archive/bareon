@@ -41,7 +41,7 @@ class TestDoCopyimage(unittest2.TestCase):
 
         result = self.driver.do_copyimage(os_id)
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         self.mock_mount(chroot, pseudo=False, treat_mtab=False)
         self.mock_umount(chroot, pseudo=False)
         mock_execute.assert_called_once_with('rsync', 'r_flags',
