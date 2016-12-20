@@ -14,31 +14,13 @@
 # limitations under the License.
 
 import json
-import unittest2
 import utils
 import uuid
 
-from ramdisk_func_test.environment import Environment
+from bareon import tests_functional
 
 
-class SingleProvisioningTestCase(unittest2.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(SingleProvisioningTestCase, cls).setUpClass()
-        cls.env = Environment(
-            node_templates="./bareon/tests_functional/node_templates"
-        )
-        cls.env.setupclass()
-
-    def tearDown(self):
-        super(SingleProvisioningTestCase, self).tearDown()
-        self.env.teardown()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(SingleProvisioningTestCase, cls).tearDownClass()
-        cls.env.teardownclass()
-
+class SingleProvisioningTestCase(tests_functional.TestCase):
     def test_provision_two_disks_swift(self):
         DEPLOY_DRIVER = 'swift'
         deploy_conf = {
@@ -208,24 +190,7 @@ Number  Start   End     Size    File system  Name     Flags
         utils.assertNoDiff(expected, actual)
 
 
-class MultipleProvisioningTestCase(unittest2.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super(MultipleProvisioningTestCase, cls).setUpClass()
-        cls.env = Environment(
-            node_templates="./bareon/tests_functional/node_templates"
-        )
-        cls.env.setupclass()
-
-    def tearDown(self):
-        super(MultipleProvisioningTestCase, self).tearDown()
-        self.env.teardown()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(MultipleProvisioningTestCase, cls).tearDownClass()
-        cls.env.teardownclass()
-
+class MultipleProvisioningTestCase(tests_functional.TestCase):
     def test_multiple_provisioning(self):
         DEPLOY_DRIVER = 'swift'
         image_url = self.env.get_url_for_image(
