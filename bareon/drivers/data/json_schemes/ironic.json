@@ -1,54 +1,223 @@
 {
-  "uniqueItems": true,
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "array",
-  "title": "Ironic partition schema",
-  "minItems": 1,
-  "items": {
-    "anyOf": [
-      {
-        "required": [
-          "type",
-          "id",
-          "volumes",
-          "size"
-        ],
+  "title": "Ironic deployment config schema",
+  "type": "object",
+  "required": [
+    "partitions",
+    "images"
+  ],
+  "properties": {
+    "images": {
+      "type": "array",
+      "items": {
         "type": "object",
         "properties": {
+          "image_name": {
+            "type": "string"
+          },
+          "image_uuid": {
+            "type": "string"
+          },
+          "image_pull_url": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
-          "volumes": {
-            "items": {
-              "anyOf": [
-                {
+          "boot": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "image_deploy_flags": {
+      "type": "object"
+    },
+    "partitions_policy": {
+      "enum": [
+        "verify",
+        "clean",
+        "nailgun_legacy"
+      ]
+    },
+    "partitions": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "id",
+              "volumes",
+              "size"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "volumes": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "type",
+                        "size",
+                        "vg"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "vg": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "enum": [
+                            "pv"
+                          ]
+                        },
+                        "keep_data": {
+                          "type": "boolean"
+                        },
+                        "lvm_meta_size": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "type",
+                        "size"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "mount": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "enum": [
+                            "raid",
+                            "partition"
+                          ]
+                        },
+                        "keep_data": {
+                          "type": "boolean"
+                        },
+                        "file_system": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "type",
+                        "size"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "enum": [
+                            "boot"
+                          ]
+                        },
+                        "size": {
+                          "type": "string"
+                        },
+                        "keep_data": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    {
+                      "required": [
+                        "type",
+                        "size"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "enum": [
+                            "lvm_meta_pool"
+                          ]
+                        },
+                        "size": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "type": {
+                "enum": [
+                  "disk"
+                ]
+              },
+              "id": {
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "scsi",
+                      "path",
+                      "name"
+                    ]
+                  }
+                }
+              },
+              "size": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "required": [
+              "type",
+              "id",
+              "volumes"
+            ],
+            "type": "object",
+            "properties": {
+              "_allocate_size": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "min_size": {
+                "type": "integer"
+              },
+              "volumes": {
+                "items": {
                   "required": [
                     "type",
                     "size",
-                    "vg"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "vg": {
-                      "type": "string"
-                    },
-                    "type": {
-                      "enum": [
-                        "pv"
-                      ]
-                    },
-                    "lvm_meta_size": {
-                      "type": "string"
-                    },
-                    "size": {
-                      "type": "string"
-                    }
-                  }
-                },
-                {
-                  "required": [
-                    "type",
-                    "size"
+                    "name"
                   ],
                   "type": "object",
                   "properties": {
@@ -57,142 +226,48 @@
                     },
                     "type": {
                       "enum": [
-                        "raid",
-                        "partition"
+                        "lv"
                       ]
                     },
-                    "file_system": {
-                      "type": "string"
+                    "keep_data": {
+                      "type": "boolean"
                     },
                     "name": {
                       "type": "string"
                     },
-                    "size": {
+                    "file_system": {
                       "type": "string"
-                    }
-                  }
-                },
-                {
-                  "required": [
-                    "type",
-                    "size"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "boot"
-                      ]
                     },
                     "size": {
                       "type": "string"
                     }
                   }
                 },
-                {
-                  "required": [
-                    "type",
-                    "size"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "lvm_meta_pool"
-                      ]
-                    },
-                    "size": {
-                      "type": "string"
-                    }
-                  }
-                }
-              ]
-            },
-            "type": "array"
-          },
-          "type": {
-            "enum": [
-              "disk"
-            ]
-          },
-          "id": {
-            "required": [
-              "type",
-              "value"
-            ],
-            "type": "object",
-            "properties": {
+                "type": "array"
+              },
               "type": {
                 "enum": [
-                  "scsi",
-                  "path",
-                  "name"
+                  "vg"
                 ]
+              },
+              "keep_data": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
               }
             }
-          },
-          "size": {
-            "type": "string"
           }
-        }
-      },
-      {
-        "required": [
-          "type",
-          "id",
-          "volumes"
-        ],
-        "type": "object",
-        "properties": {
-          "_allocate_size": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          },
-          "min_size": {
-            "type": "integer"
-          },
-          "volumes": {
-            "items": {
-              "required": [
-                "type",
-                "size",
-                "name"
-              ],
-              "type": "object",
-              "properties": {
-                "mount": {
-                  "type": "string"
-                },
-                "type": {
-                  "enum": [
-                    "lv"
-                  ]
-                },
-                "name": {
-                  "type": "string"
-                },
-                "file_system": {
-                  "type": "string"
-                },
-                "size": {
-                  "type": "string"
-                }
-              }
-            },
-            "type": "array"
-          },
-          "type": {
-            "enum": [
-              "vg"
-            ]
-          },
-          "id": {
-            "type": "string"
-          }
+        ]
+      }
+    },
+    "deploy_data": {
+      "type": "object",
+      "properties": {
+        "kernel_params": {
+          "type": "string"
         }
       }
-    ]
+    }
   }
 }

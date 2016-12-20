@@ -17,12 +17,14 @@ import mock
 import unittest2
 
 from bareon.drivers.data import generic
+from bareon.utils.partition import MiB
+from bareon.utils.partition import TiB
 
 
 class TestKsDisks(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestKsDisks, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver({})
+    def setUp(self):
+        super(TestKsDisks, self).setUp()
+        self.driver = _DummyDataDriver({})
         self.driver._partition_data = self.mock_part_data = mock.MagicMock()
 
     def test_no_partition_data(self):
@@ -72,9 +74,9 @@ class TestKsDisks(unittest2.TestCase):
 
 
 class TestKsVgs(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestKsVgs, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver({})
+    def setUp(self):
+        super(TestKsVgs, self).setUp()
+        self.driver = _DummyDataDriver({})
         self.driver._partition_data = self.mock_part_data = mock.MagicMock()
 
     def test_no_partition_data(self):
@@ -112,9 +114,9 @@ class TestKsVgs(unittest2.TestCase):
 
 
 class TestSmallKsDisks(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestSmallKsDisks, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver({})
+    def setUp(self):
+        super(TestSmallKsDisks, self).setUp()
+        self.driver = _DummyDataDriver({})
         self.driver._partition_data = self.mock_part_data = mock.MagicMock()
 
     def test_no_partition_data(self):
@@ -128,8 +130,8 @@ class TestSmallKsDisks(unittest2.TestCase):
 
     def test_no_partitions_valid_size(self):
         self.mock_part_data.return_value = [
-            {'size': 3 * 1024 * 1024, 'type': 'disk'},
-            {'size': 5 * 1024 * 1024, 'type': 'disk'}
+            {'size': 3 * TiB, 'type': 'disk'},
+            {'size': 5 * TiB, 'type': 'disk'}
         ]
         desired = []
 
@@ -140,10 +142,10 @@ class TestSmallKsDisks(unittest2.TestCase):
 
     def test_valid_data(self):
         self.mock_part_data.return_value = [
-            {'size': 3 * 1024 * 1024, 'type': 'vg'},
-            {'size': 1 * 1024 * 1024, 'type': 'disk'}
+            {'size': 3 * MiB, 'type': 'vg'},
+            {'size': 1 * MiB, 'type': 'disk'}
         ]
-        desired = [{'size': 1 * 1024 * 1024, 'type': 'disk'}]
+        desired = [{'size': 1 * MiB, 'type': 'disk'}]
 
         result = self.driver._small_ks_disks
 
@@ -152,9 +154,9 @@ class TestSmallKsDisks(unittest2.TestCase):
 
 
 class TestGetLabel(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestGetLabel, self).__init__(*args, **kwargs)
-        self.driver = generic.GenericDataDriver({})
+    def setUp(self):
+        super(TestGetLabel, self).setUp()
+        self.driver = _DummyDataDriver({})
 
     def test_no_label(self):
         label = None
@@ -179,3 +181,12 @@ class TestGetLabel(unittest2.TestCase):
         result = self.driver._getlabel(label)
 
         self.assertEqual(result, desired)
+
+
+class _DummyDataDriver(generic.GenericDataDriver):
+    def _partition_data(self):
+        return []
+
+    @classmethod
+    def validate_data(cls, payload):
+        pass

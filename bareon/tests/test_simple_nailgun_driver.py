@@ -30,25 +30,23 @@ from bareon.tests import base
     parse_configdrive_scheme=lambda x: objects.ConfigDriveScheme(),
     parse_image_scheme=lambda x: objects.ImageScheme())
 class TestObjectDeserialization(unittest2.TestCase):
-
     def test_driver_always_has_correct_objects(self):
-        driver = simple.NailgunSimpleDriver({})
+        driver = simple.NailgunSimpleDriver(self._minimal_payload())
         assert isinstance(driver.partition_scheme, objects.PartitionScheme)
 
     def test_lv_data_is_loaded(self):
-        lv_data = {
-            'partitioning': {
-                'lvs': [
-                    {
-                        'name': 'lv-name',
-                        'size': 12345,
-                        'vgname': 'vg-name',
-                    },
-                ]
-            }
+        payload = self._minimal_payload()
+        payload['partitioning'] = {
+            'lvs': [
+                {
+                    'name': 'lv-name',
+                    'size': 12345,
+                    'vgname': 'vg-name',
+                },
+            ]
         }
 
-        driver = simple.NailgunSimpleDriver(lv_data)
+        driver = simple.NailgunSimpleDriver(payload)
         lv = driver.partition_scheme.lvs[0]
         assert len(driver.partition_scheme.lvs) == 1
         assert isinstance(lv, objects.LV)
@@ -57,19 +55,18 @@ class TestObjectDeserialization(unittest2.TestCase):
         assert lv.vgname == 'vg-name'
 
     def test_pv_data_is_loaded(self):
-        pv_data = {
-            'partitioning': {
-                'pvs': [
-                    {
-                        'metadatacopies': 2,
-                        'metadatasize': 28,
-                        'name': '/dev/sda5'
-                    },
-                ]
-            }
+        payload = self._minimal_payload()
+        payload['partitioning'] = {
+            'pvs': [
+                {
+                    'metadatacopies': 2,
+                    'metadatasize': 28,
+                    'name': '/dev/sda5'
+                },
+            ]
         }
 
-        driver = simple.NailgunSimpleDriver(pv_data)
+        driver = simple.NailgunSimpleDriver(payload)
         pv = driver.partition_scheme.pvs[0]
         assert len(driver.partition_scheme.pvs) == 1
         assert isinstance(pv, objects.PV)
@@ -78,22 +75,21 @@ class TestObjectDeserialization(unittest2.TestCase):
         assert pv.metadatasize == 28
 
     def test_vg_data_is_loaded(self):
-        vg_data = {
-            'partitioning': {
-                'vgs': [
-                    {
-                        'name': 'image',
-                        'pvnames': [
-                            '/dev/sda6',
-                            '/dev/sdb3',
-                            '/dev/sdc3',
-                        ]
-                    },
-                ]
-            }
+        payload = self._minimal_payload()
+        payload['partitioning'] = {
+            'vgs': [
+                {
+                    'name': 'image',
+                    'pvnames': [
+                        '/dev/sda6',
+                        '/dev/sdb3',
+                        '/dev/sdc3',
+                    ]
+                },
+            ]
         }
 
-        driver = simple.NailgunSimpleDriver(vg_data)
+        driver = simple.NailgunSimpleDriver(payload)
         vg = driver.partition_scheme.vgs[0]
         assert len(driver.partition_scheme.vgs) == 1
         assert isinstance(vg, objects.VG)
@@ -108,21 +104,20 @@ class TestObjectDeserialization(unittest2.TestCase):
         )
 
     def test_fs_data_is_loaded(self):
-        fs_data = {
-            'partitioning': {
-                'fss': [
-                    {
-                        'device': '/dev/sda3',
-                        'fs_label': 'some-label',
-                        'fs_options': 'some-options',
-                        'fs_type': 'ext2',
-                        'mount': '/boot'
-                    },
-                ]
-            }
+        payload = self._minimal_payload()
+        payload['partitioning'] = {
+            'fss': [
+                {
+                    'device': '/dev/sda3',
+                    'fs_label': 'some-label',
+                    'fs_options': 'some-options',
+                    'fs_type': 'ext2',
+                    'mount': '/boot'
+                },
+            ]
         }
 
-        driver = simple.NailgunSimpleDriver(fs_data)
+        driver = simple.NailgunSimpleDriver(payload)
         fs = driver.partition_scheme.fss[0]
         assert len(driver.partition_scheme.fss) == 1
         assert isinstance(fs, objects.FS)
@@ -133,34 +128,33 @@ class TestObjectDeserialization(unittest2.TestCase):
         assert fs.mount == '/boot'
 
     def test_parted_data_is_loaded(self):
-        parted_data = {
-            'partitioning': {
-                'parteds': [
-                    {
-                        'label': 'gpt',
-                        'name': '/dev/sdb',
-                        'partitions': [
-                            {
-                                'begin': 1,
-                                'configdrive': False,
-                                'count': 1,
-                                'device': '/dev/sdb',
-                                'end': 25,
-                                'flags': [
-                                    'bios_grub',
-                                    'xyz',
-                                ],
-                                'guid': None,
-                                'name': '/dev/sdb1',
-                                'partition_type': 'primary'
-                            },
-                        ]
-                    },
-                ]
-            }
+        payload = self._minimal_payload()
+        payload['partitioning'] = {
+            'parteds': [
+                {
+                    'label': 'gpt',
+                    'name': '/dev/sdb',
+                    'partitions': [
+                        {
+                            'begin': 1,
+                            'configdrive': False,
+                            'count': 1,
+                            'device': '/dev/sdb',
+                            'end': 25,
+                            'flags': [
+                                'bios_grub',
+                                'xyz',
+                            ],
+                            'guid': None,
+                            'name': '/dev/sdb1',
+                            'partition_type': 'primary'
+                        },
+                    ]
+                },
+            ]
         }
 
-        driver = simple.NailgunSimpleDriver(parted_data)
+        driver = simple.NailgunSimpleDriver(payload)
         parted = driver.partition_scheme.parteds[0]
         partition = parted.partitions[0]
         assert len(driver.partition_scheme.parteds) == 1
@@ -179,26 +173,25 @@ class TestObjectDeserialization(unittest2.TestCase):
         assert partition.type == 'primary'
 
     def test_md_data_is_loaded(self):
-        md_data = {
-            'partitioning': {
-                'mds': [
-                    {
-                        'name': 'some-raid',
-                        'level': 1,
-                        'devices': [
-                            '/dev/sda',
-                            '/dev/sdc',
-                        ],
-                        'spares': [
-                            '/dev/sdb',
-                            '/dev/sdd',
-                        ]
-                    },
-                ]
-            }
+        payload = self._minimal_payload()
+        payload['partitioning'] = {
+            'mds': [
+                {
+                    'name': 'some-raid',
+                    'level': 1,
+                    'devices': [
+                        '/dev/sda',
+                        '/dev/sdc',
+                    ],
+                    'spares': [
+                        '/dev/sdb',
+                        '/dev/sdd',
+                    ]
+                },
+            ]
         }
 
-        driver = simple.NailgunSimpleDriver(md_data)
+        driver = simple.NailgunSimpleDriver(payload)
         md = driver.partition_scheme.mds[0]
         assert len(driver.partition_scheme.mds) == 1
         assert isinstance(md, objects.MD)
@@ -206,6 +199,26 @@ class TestObjectDeserialization(unittest2.TestCase):
         assert md.level == 1
         self.assertItemsEqual(md.devices, ['/dev/sda', '/dev/sdc'])
         self.assertItemsEqual(md.spares, ['/dev/sdb', '/dev/sdd'])
+
+    @staticmethod
+    def _minimal_payload():
+        return {
+            'ks_meta': {
+                'pm_data': {
+                    'ks_spaces': [
+                        {
+                            'type': 'disk',
+                            'id': 'dummy-disk-id',
+                            'name': 'dummy0',
+                            'free_space': 0,
+                            'size': 128,
+                            'extra': [],
+                            'volumes': []
+                        }
+                    ]
+                }
+            }
+        }
 
 
 @requests_mock.mock()
