@@ -31,23 +31,27 @@ rm -rf $BUILD_DIR
 mkdir $BUILD_DIR
 cd $BUILD_DIR
 
-# NOTE(lobur): temp workaround while we don't build the key along with the image
-wget $FUEL_KEY -O fuel_key
-chmod 0600 fuel_key
-
 git clone -b $DIB_BRANCH $DIB_SRC
 git clone -b $DIB_UTILS_BRANCH $DIB_UTILS_SRC
 git clone -b $DIB_ELEMENTS_BRANCH $DIB_ELEMENTS_SRC
+
+ssh-keygen -N '' -f bareon_key
+cp -f bareon_key.pub  "$BUILD_DIR/bareon-image-elements/centos-bareon/install.d/files.ironic/root/.ssh/authorized_keys"
+
+# Apply changes from https://review.openstack.org/319909
+# The problem is still actual for CentOS (https://bugs.launchpad.net/diskimage-builder/+bug/1650582)
+sed -i -e 's%mv \(/usr/lib/locale/locale-archive\)%cp \1%' diskimage-builder/elements/yum-minimal/pre-install.d/03-yum-cleanup
 
 export PATH=$BUILD_DIR/diskimage-builder/bin:$BUILD_DIR/dib-utils/bin:$PATH
 
 export BAREON_SRC=file://$BAREON_PATH
 export BAREON_BRANCH=$(cd $BAREON_PATH && git rev-parse --abbrev-ref HEAD) # Use current branch
 
-export ELEMENTS_PATH=$BUILD_DIR/bareon-image-elements
+export ELEMENTS_PATH="$BUILD_DIR/bareon-image-elements"
 
 export DIB_OFFLINE=1
 export DIB_DEBUG_TRACE=1
+export DIB_DATA_ROOT="$BUILD_DIR"
 
 disk-image-create -n -t raw -o cent-min centos-minimal centos-bareon
 
