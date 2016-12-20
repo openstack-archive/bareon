@@ -22,6 +22,11 @@ from bareon.utils import utils
 LOG = logging.getLogger(__name__)
 PARTITION_ALIGMENT = ('none', 'cylinder', 'minimal', 'optimal')
 
+KiB = 1024
+MiB = KiB * 1024
+GiB = MiB * 1024
+TiB = GiB * 1024
+
 
 def parse_partition_info(parted_output):
     lines = parted_output.split('\n')

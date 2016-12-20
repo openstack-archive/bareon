@@ -14,8 +14,12 @@
 
 import abc
 import copy
+import os
 
+import pkg_resources
 import six
+
+import bareon.drivers.data
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -26,10 +30,20 @@ class BaseDataDriver(object):
     methods for getting object schemes, etc.
     """
 
+    data_validation_schema = None
+
     def __init__(self, data):
+        self.validate_data(data)
         self.data = copy.deepcopy(data)
         if 'flow' in self.data:
             self.flow = self.data['flow']
+
+    @classmethod
+    def validate_data(cls, data):
+        root = pkg_resources.resource_filename(
+            'bareon.drivers.data', 'json_schemes')
+        schema_path = os.path.join(root, cls.data_validation_schema)
+        bareon.drivers.data.validate(schema_path, data)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -81,4 +95,8 @@ class MultibootDeploymentMixin(object):
 
     @abc.abstractmethod
     def get_os_ids(self):
+        pass
+
+    @abc.abstractmethod
+    def _partition_data(self):
         pass

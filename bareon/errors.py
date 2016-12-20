@@ -19,8 +19,30 @@ class BaseError(Exception):
         super(BaseError, self).__init__(message, *args, **kwargs)
 
 
+class ApplicationDataCorruptError(BaseError):
+    pass
+
+
 class WrongInputDataError(BaseError):
     pass
+
+
+class InputDataSchemaValidationError(WrongInputDataError):
+    def __init__(self, defects):
+        human_readable_defects = []
+        for idx, d in enumerate(defects):
+            path = [''] + list(d.path)
+            path = '/'.join((str(x) for x in path))
+            human_readable_defects.append(
+                '#{} ({}): {}'.format(idx, path, d.message))
+
+        indent = ' ' * 4
+        separator = '\n{}'.format(indent)
+        message = 'Invalid input data:\n{}{}'.format(
+            indent, separator.join(human_readable_defects))
+
+        super(WrongInputDataError, self).__init__(message, defects)
+        self.defects = defects
 
 
 class WrongPartitionSchemeError(BaseError):
