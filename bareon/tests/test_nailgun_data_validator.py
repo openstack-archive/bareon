@@ -16,10 +16,10 @@ import copy
 
 import unittest2
 
-from bareon.drivers.data import ks_spaces_validator as kssv
+from bareon.drivers.data import nailgun
 from bareon import errors
 
-SAMPLE_SCHEME = [
+SAMPLE_CHUNK_SPACES = [
     {
         "name": "sda",
         "extra": [
@@ -181,25 +181,96 @@ SAMPLE_SCHEME = [
     }
 ]
 
+SAMPLE_PAYLOAD = {
+    'ks_meta': {
+        'pm_data': {
+            'ks_spaces': SAMPLE_CHUNK_SPACES
+        }
+    }
+}
 
-class TestKSSpacesValidator(unittest2.TestCase):
+
+class TestNailgunDataValidator(unittest2.TestCase):
     def setUp(self):
-        super(TestKSSpacesValidator, self).setUp()
-        self.fake_scheme = copy.deepcopy(SAMPLE_SCHEME)
+        super(TestNailgunDataValidator, self).setUp()
+        self.payload = copy.deepcopy(SAMPLE_PAYLOAD)
+        self.payload_spaces = self._get_spaces(self.payload)
 
-    def test_validate_ok(self):
-        kssv.validate(self.fake_scheme)
+    def test_no_error(self):
+        nailgun.Nailgun.validate_data(self.payload)
 
-    def test_validate_jsoschema_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          [{}])
+    def test_fail(self):
+        self.assertRaises(
+            errors.WrongInputDataError, nailgun.Nailgun.validate_data, {})
 
-    def test_validate_no_disks_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          self.fake_scheme[-2:])
+    def test_disks_no_disks_fail(self):
+        self.payload_spaces[:-2] = []
+        self.assertRaises(
+            errors.WrongInputDataError, nailgun.Nailgun.validate_data,
+            self.payload)
 
-    @unittest2.skip("Fix after cray rebase")
-    def test_validate_16T_root_volume_fail(self):
-        self.fake_scheme[3]['volumes'][0]['size'] = 16777216 + 1
-        self.assertRaises(errors.WrongPartitionSchemeError, kssv.validate,
-                          self.fake_scheme)
+    def test_disks_free_space_type_fail(self):
+        incorrect_values_for_free_space = [
+            False, True, '0', '1', None, object
+        ]
+        for value in incorrect_values_for_free_space:
+            self.payload_spaces[0]['free_space'] = value
+            self.assertRaises(
+                errors.WrongInputDataError, nailgun.Nailgun.validate_data,
+                self.payload)
+
+    def test_disks_volume_type_fail(self):
+        incorrect_values_for_type = [
+            False, True, 0, 1, None, object
+        ]
+        for value in incorrect_values_for_type:
+            self.payload_spaces[0]['volumes'][1]['type'] = value
+            self.assertRaises(
+                errors.WrongInputDataError, nailgun.Nailgun.validate_data,
+                self.payload)
+
+    def test_disks_volume_size_fail(self):
+        incorrect_values_for_size = [
+            False, True, '0', '1', None, object
+        ]
+        for value in incorrect_values_for_size:
+            self.payload_spaces[0]['volumes'][1]['size'] = value
+            self.assertRaises(
+                errors.WrongInputDataError, nailgun.Nailgun.validate_data,
+                self.payload)
+
+    def test_disks_device_id_fail(self):
+        incorrect_values_for_id = [
+            False, True, 0, 1, None, object
+        ]
+        for value in incorrect_values_for_id:
+            self.payload_spaces[0]['id'] = value
+            self.assertRaises(
+                errors.WrongInputDataError, nailgun.Nailgun.validate_data,
+                self.payload)
+
+    def test_disks_missed_property(self):
+        required = ['id', 'size', 'volumes', 'type', 'free_space', 'volumes']
+        for prop in required:
+            payload = copy.deepcopy(self.payload)
+            spaces = self._get_spaces(payload)
+            del spaces[0][prop]
+            self.assertRaises(
+                errors.WrongInputDataError, nailgun.Nailgun.validate_data,
+                payload)
+
+    def test_disks_missed_volume_property(self):
+        required = ['type', 'size', 'vg']
+        for prop in required:
+            payload = copy.deepcopy(self.payload)
+            spaces = self._get_spaces(payload)
+            del spaces[0]['volumes'][3][prop]
+            self.assertRaises(
+                errors.WrongInputDataError, nailgun.Nailgun.validate_data,
+                payload)
+
+    @staticmethod
+    def _get_spaces(payload):
+        payload = payload['ks_meta']
+        payload = payload['pm_data']
+        return payload['ks_spaces']

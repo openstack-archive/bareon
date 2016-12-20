@@ -22,7 +22,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from bareon.drivers.data.generic import GenericDataDriver
-from bareon.drivers.data import ks_spaces_validator
 from bareon import errors
 from bareon import objects
 from bareon.utils import hardware as hu
@@ -39,11 +38,14 @@ DEFAULT_GRUB_SIZE = 24
 
 
 class Ironic(GenericDataDriver):
+    data_validation_schema = 'ironic.json'
+
+    _root_on_lvm = None
+    _boot_on_lvm = None
 
     def __init__(self, data):
         super(Ironic, self).__init__(data)
-        self._root_on_lvm = None
-        self._boot_on_lvm = None
+        convert_size(self.data['partitions'])
 
     def _get_image_meta(self):
         pass
@@ -120,15 +122,11 @@ class Ironic(GenericDataDriver):
         scanning/comparing the underlying node hardware.
         """
         LOG.debug('--- Preparing partition scheme ---')
-        # TODO(oberezovskyi): make validator work
-        data = self._partition_data()
-        ks_spaces_validator.validate(data, 'ironic')
-        data = convert_size(data)
-        partition_schema = objects.PartitionScheme()
+        LOG.debug('Looping over all disks in provision data')
 
         multiboot_installed = False
 
-        LOG.debug('Looping over all disks in provision data')
+        partition_schema = objects.PartitionScheme()
         for disk in self._ks_disks:
             # # skipping disk if there are no volumes with size >0
             # # to be allocated on it which are not boot partitions
@@ -601,6 +599,18 @@ class Ironic(GenericDataDriver):
                         hu_data.get(id_type, [])))
         else:
             return fnmatch.fnmatch(hu_data.get(id_type, ''), id_value)
+
+    @classmethod
+    def validate_data(cls, data):
+        super(Ironic, cls).validate_data(data)
+
+        disks = data['partitions']
+
+        # scheme is not valid if the number of disks is 0
+        if not [d for d in disks if d['type'] == 'disk']:
+            raise errors.WrongInputDataError(
+                'Invalid partition schema: You must specify at least one '
+                'disk.')
 
 
 def convert_size(data):
