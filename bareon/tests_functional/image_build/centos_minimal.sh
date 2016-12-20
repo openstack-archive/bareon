@@ -31,25 +31,48 @@ rm -rf $BUILD_DIR
 mkdir $BUILD_DIR
 cd $BUILD_DIR
 
-# NOTE(lobur): temp workaround while we don't build the key along with the image
-wget $FUEL_KEY -O fuel_key
-chmod 0600 fuel_key
+ssh-keygen -N '' -f bareon_key
+
+# make dib-extra-element
+mkdir -p dib
+dib="dib/bareon-extra"
+mkdir -p "$dib/root.d"
+cat > "$dib/root.d/50-bareon-ssh-key" << 'CATEND'
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -e
+
+sudo mkdir -p "$TARGET_ROOT/root/.ssh"
+sudo chmod 700 "$TARGET_ROOT/root/.ssh"
+sudo cp "$DIB_DATA_ROOT/bareon_key.pub" "$TARGET_ROOT/root/.ssh/authorized_keys"
+sudo chmod 600 "$TARGET_ROOT/root/.ssh/authorized_keys"
+CATEND
+
+chmod 755 "$dib/root.d/50-bareon-ssh-key"
 
 git clone -b $DIB_BRANCH $DIB_SRC
 git clone -b $DIB_UTILS_BRANCH $DIB_UTILS_SRC
 git clone -b $DIB_ELEMENTS_BRANCH $DIB_ELEMENTS_SRC
+
+# Apply changes from https://review.openstack.org/319909
+# The problem is still actual for CentOS (https://bugs.launchpad.net/diskimage-builder/+bug/1650582)
+sed -i -e 's%mv \(/usr/lib/locale/locale-archive\)%cp \1%' diskimage-builder/elements/yum-minimal/pre-install.d/03-yum-cleanup
 
 export PATH=$BUILD_DIR/diskimage-builder/bin:$BUILD_DIR/dib-utils/bin:$PATH
 
 export BAREON_SRC=file://$BAREON_PATH
 export BAREON_BRANCH=$(cd $BAREON_PATH && git rev-parse --abbrev-ref HEAD) # Use current branch
 
-export ELEMENTS_PATH=$BUILD_DIR/bareon-image-elements
+export ELEMENTS_PATH="$BUILD_DIR/bareon-image-elements:$BUILD_DIR/dib"
 
 export DIB_OFFLINE=1
 export DIB_DEBUG_TRACE=1
+export DIB_DATA_ROOT="$BUILD_DIR"
 
-disk-image-create -n -t raw -o cent-min centos-minimal centos-bareon
+disk-image-create -n -t raw -o cent-min centos-minimal centos-bareon bareon-extra
 
 rm -r cent-min.raw
 mv cent-min.initramfs initramfs
