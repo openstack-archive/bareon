@@ -18,7 +18,7 @@ from copy import deepcopy
 import unittest2
 import utils
 
-from ramdisk_func_test.environment import Environment
+from bareon import tests_functional
 
 
 PROVISION_SAMPLE_DATA = {
@@ -234,25 +234,7 @@ PROVISION_SAMPLE_DATA = {
 }
 
 
-class TestNailgun(unittest2.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestNailgun, cls).setUpClass()
-        cls.env = Environment(
-            node_templates="./bareon/tests_functional/node_templates"
-        )
-        cls.env.setupclass()
-
-    def tearDown(self):
-        super(TestNailgun, self).tearDown()
-        self.env.teardown()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestNailgun, cls).tearDownClass()
-        cls.env.teardownclass()
-
+class TestNailgun(tests_functional.TestCase):
     def test_provision(self):
         data = deepcopy(PROVISION_SAMPLE_DATA)
         data['ks_meta']['image_data']['/']['uri'] = self.env.get_url_for_image(
