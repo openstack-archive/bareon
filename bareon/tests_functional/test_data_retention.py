@@ -13,22 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest2
-import utils
-
-from ramdisk_func_test.environment import Environment
+from bareon import tests_functional
+from bareon.tests_functional import utils
 
 
-class DataRetentionTestCase(unittest2.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super(DataRetentionTestCase, cls).setUpClass()
-        cls.env = Environment(
-            node_templates="./bareon/tests_functional/node_templates"
-        )
-        cls.env.setupclass()
-
+class DataRetentionTestCase(tests_functional.TestCase):
     def setUp(self):
         super(DataRetentionTestCase, self).setUp()
         self.images = [
@@ -105,15 +94,6 @@ Disk Flags:
 Number  Start  End    Size   File system  Flags
  1      0.00B  106MB  106MB  ext4
 """
-
-    def tearDown(self):
-        super(DataRetentionTestCase, self).tearDown()
-        self.env.teardown()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(DataRetentionTestCase, cls).tearDownClass()
-        cls.env.teardownclass()
 
     def _assert_vda_equal_to_goldenimage(self, node):
         self._assert_vda_root_equal_to_goldenimage(node)
