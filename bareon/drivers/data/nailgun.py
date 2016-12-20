@@ -32,7 +32,6 @@ from bareon.drivers.data.base import ConfigDriveDataDriverMixin
 from bareon.drivers.data.base import GrubBootloaderDataDriverMixin
 from bareon.drivers.data.base import PartitioningDataDriverMixin
 from bareon.drivers.data.base import ProvisioningDataDriverMixin
-from bareon.drivers.data import ks_spaces_validator
 from bareon import errors
 from bareon import objects
 
@@ -83,6 +82,9 @@ class Nailgun(BaseDataDriver,
               ConfigDriveDataDriverMixin,
               GrubBootloaderDataDriverMixin):
     """Driver for parsing regular volumes metadata from Nailgun."""
+
+    data_validation_schema = 'nailgun.json'
+    partitions_policy = 'nailgun_legacy'
 
     def __init__(self, data):
         super(Nailgun, self).__init__(data)
@@ -336,15 +338,13 @@ class Nailgun(BaseDataDriver,
 
     def parse_partition_scheme(self):
         LOG.debug('--- Preparing partition scheme ---')
-        data = self.partition_data()
-        ks_spaces_validator.validate(data)
-        partition_scheme = objects.PartitionScheme()
 
         ceph_osds = self._num_ceph_osds()
         journals_left = ceph_osds
         ceph_journals = self._num_ceph_journals()
 
         LOG.debug('Looping over all disks in provision data')
+        partition_scheme = objects.PartitionScheme()
         for disk in self.ks_disks:
             # skipping disk if there are no volumes with size >0
             # to be allocated on it which are not boot partitions
@@ -710,6 +710,18 @@ class Nailgun(BaseDataDriver,
             )
         return image_scheme
 
+    @classmethod
+    def validate_data(cls, data):
+        super(Nailgun, cls).validate_data(data)
+
+        disks = data['ks_meta']['pm_data']['ks_spaces']
+
+        # scheme is not valid if the number of disks is 0
+        if not [d for d in disks if d['type'] == 'disk']:
+            raise errors.WrongInputDataError(
+                'Invalid partition schema: You must specify at least one '
+                'disk.')
+
 
 class Ironic(Nailgun):
     def __init__(self, data):
@@ -723,6 +735,7 @@ class NailgunBuildImage(BaseDataDriver,
                         ProvisioningDataDriverMixin,
                         ConfigDriveDataDriverMixin,
                         GrubBootloaderDataDriverMixin):
+    data_validation_schema = 'nailgun-build-image.json'
 
     DEFAULT_TRUSTY_PACKAGES = [
         "acl",

@@ -12,11 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 
 from oslo_config import cfg
 
 from bareon import errors
+from bareon.utils.partition import MiB
+from bareon.utils.partition import TiB
 from bareon.utils import utils
 
 from bareon.drivers.data.base import BaseDataDriver
@@ -167,7 +170,7 @@ class GenericDataDriver(BaseDataDriver,
     @property
     def _small_ks_disks(self):
         """Get those disks which are smaller than 2T"""
-        return [d for d in self._ks_disks if d['size'] <= 2 * 1024 * 1024]
+        return [x for x in self._ks_disks if x['size'] <= 2 * TiB / MiB]
 
     def get_os_ids(self):
         raise NotImplementedError
