@@ -16,13 +16,13 @@
 
 # A default environment used for image build/sync.
 
-export DIB_SRC=git@github.com:openstack/diskimage-builder.git
+export DIB_SRC=https://github.com/openstack/diskimage-builder.git
 export DIB_BRANCH=master
 
-export DIB_UTILS_SRC=git@github.com:openstack/dib-utils.git
+export DIB_UTILS_SRC=https://github.com/openstack/dib-utils.git
 export DIB_UTILS_BRANCH=master
 
-export DIB_ELEMENTS_SRC=git@github.com:openstack/bareon-image-elements.git
+export DIB_ELEMENTS_SRC=https://github.com/openstack/bareon-image-elements.git
 export DIB_ELEMENTS_BRANCH=master
 
 export FUEL_KEY=https://raw.githubusercontent.com/stackforge/fuel-main/master/bootstrap/ssh/id_rsa
