@@ -23,10 +23,24 @@ from bareon.utils import hardware as hu
 from bareon.utils import utils
 
 
-class TestGetImageSchema(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestGetImageSchema, self).__init__(*args, **kwargs)
+class IronicTestAbstract(unittest2.TestCase):
+    def setUp(self):
+        super(IronicTestAbstract, self).setUp()
+        self.driver = self.new_data_driver()
 
+    @staticmethod
+    def new_data_driver(payload=None):
+        if payload is None:
+            payload = {}
+        payload.setdefault('partitions', [])
+
+        with mock.patch.object(ironic.Ironic, 'validate_data'):
+            driver = ironic.Ironic(payload)
+
+        return driver
+
+
+class TestGetImageSchema(IronicTestAbstract):
     def test_get_image_schema(self):
         image_uri = 'test_uri'
         rsync_flags = '-a -X'
@@ -38,9 +52,9 @@ class TestGetImageSchema(unittest2.TestCase):
                 'name': 'test'
             }
         ], 'image_deploy_flags': deploy_flags}
-        self.driver = ironic.Ironic(data)
+        driver = self.new_data_driver(data)
 
-        result = self.driver._get_image_scheme()
+        result = driver._get_image_scheme()
 
         self.assertEqual(len(result.images), 1)
 
@@ -49,11 +63,7 @@ class TestGetImageSchema(unittest2.TestCase):
         self.assertEqual(result_image.uri, image_uri)
 
 
-class TestMatchDevice(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestMatchDevice, self).__init__(*args, **kwargs)
-        self.driver = ironic.Ironic({})
-
+class TestMatchDevice(IronicTestAbstract):
     def test_match_list_value(self):
         test_type = 'path'
         test_value = 'test_path'
@@ -95,10 +105,9 @@ class TestMatchDevice(unittest2.TestCase):
         self.assertFalse(result)
 
 
-class TestDiskDev(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestDiskDev, self).__init__(*args, **kwargs)
-        self.driver = ironic.Ironic({})
+class TestDiskDev(IronicTestAbstract):
+    def setUp(self):
+        super(TestDiskDev, self).setUp()
         self.driver._match_device = self.mock_match_device = mock.MagicMock()
 
     def test_no_valid_disks(self):
@@ -133,11 +142,7 @@ class TestDiskDev(unittest2.TestCase):
         self.assertEqual(result, 'disk1')
 
 
-class TestMatchPartition(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestMatchPartition, self).__init__(*args, **kwargs)
-        self.driver = ironic.Ironic({})
-
+class TestMatchPartition(IronicTestAbstract):
     def test_match_list_value(self):
         test_type = 'path'
         test_value = 'test_path'
@@ -221,10 +226,9 @@ class TestMatchPartition(unittest2.TestCase):
         self.assertFalse(result)
 
 
-class TestDiskPartition(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestDiskPartition, self).__init__(*args, **kwargs)
-        self.driver = ironic.Ironic({})
+class TestDiskPartition(IronicTestAbstract):
+    def setUp(self):
+        super(TestDiskPartition, self).setUp()
         self.driver._match_data_by_pattern = \
             self.mock_match_part = mock.MagicMock()
 
@@ -262,11 +266,7 @@ class TestDiskPartition(unittest2.TestCase):
 
 @mock.patch('bareon.utils.hardware.get_partitions_from_udev_db')
 @mock.patch('bareon.utils.hardware.get_device_ids')
-class TestGetPartitionIds(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestGetPartitionIds, self).__init__(*args, **kwargs)
-        self.driver = ironic.Ironic({})
-
+class TestGetPartitionIds(IronicTestAbstract):
     def test_no_devices(self, mock_ids, mock_partitions):
         mock_partitions.return_value = []
         desired = []
@@ -299,22 +299,21 @@ class TestGetPartitionIds(unittest2.TestCase):
         mock_ids.assert_has_calls([mock.call(part) for part in parts])
 
 
-class TestFindHwFstab(unittest2.TestCase):
+class TestFindHwFstab(IronicTestAbstract):
     @mock.patch.object(utils, 'execute')
     def test__find_hw_fstab_success_single_disk(self, exec_mock):
         fs = namedtuple('fs', 'mount type device os_id')
         fss = [fs(mount='/', type='ext4', device='/dev/sda', os_id='1'),
                fs(mount='/usr', type='ext4', device='/dev/sdb', os_id='1')]
 
-        data_driver = ironic.Ironic({})
-        data_driver._partition_scheme = ironic.objects.PartitionScheme()
-        data_driver.partition_scheme.fss = fss
+        self.driver._partition_scheme = ironic.objects.PartitionScheme()
+        self.driver.partition_scheme.fss = fss
 
         exec_mock.side_effect = [('stdout', 'stderr'),
                                  ('fstab_1', 'stderr'),
                                  ('stdout', 'stderr')]
 
-        res = data_driver._find_hw_fstab()
+        res = self.driver._find_hw_fstab()
 
         self.assertEqual('\n'.join(('fstab_1',)), res)
 
@@ -325,9 +324,8 @@ class TestFindHwFstab(unittest2.TestCase):
                fs(mount='/usr', type='ext4', device='/dev/sdb', os_id='1'),
                fs(mount='/', type='ext4', device='/dev/sda', os_id='2')]
 
-        data_driver = ironic.Ironic({})
-        data_driver._partition_scheme = ironic.objects.PartitionScheme()
-        data_driver.partition_scheme.fss = fss
+        self.driver._partition_scheme = ironic.objects.PartitionScheme()
+        self.driver.partition_scheme.fss = fss
 
         exec_mock.side_effect = [('stdout', 'stderr'),
                                  ('fstab_1', 'stderr'),
@@ -336,7 +334,7 @@ class TestFindHwFstab(unittest2.TestCase):
                                  ('fstab_2', 'stderr'),
                                  ('stdout', 'stderr')]
 
-        res = data_driver._find_hw_fstab()
+        res = self.driver._find_hw_fstab()
 
         self.assertEqual('\n'.join(('fstab_1', 'fstab_2')), res)
 
@@ -346,15 +344,14 @@ class TestFindHwFstab(unittest2.TestCase):
         fss = [fs(mount='/etc', type='ext4', device='/dev/sda', os_id='1'),
                fs(mount='/', type='ext4', device='/dev/sda', os_id='1')]
 
-        data_driver = ironic.Ironic({})
-        data_driver._partition_scheme = ironic.objects.PartitionScheme()
-        data_driver.partition_scheme.fss = fss
+        self.driver._partition_scheme = ironic.objects.PartitionScheme()
+        self.driver.partition_scheme.fss = fss
         exec_mock.side_effect = [('stdout', 'stderr'),
                                  errors.ProcessExecutionError,
                                  ('stdout', 'stderr')]
 
         self.assertRaises(errors.HardwarePartitionSchemeCannotBeReadError,
-                          data_driver._find_hw_fstab)
+                          self.driver._find_hw_fstab)
 
 
 class TestConvertStringSize(unittest2.TestCase):
@@ -847,10 +844,9 @@ class TestConvertPercentSizes(unittest2.TestCase):
         map(lambda r, d: self.assertDictEqual(r, d), result, desired)
 
 
-class TestProcessPartition(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestProcessPartition, self).__init__(*args, **kwargs)
-        self.driver = ironic.Ironic({})
+class TestProcessPartition(IronicTestAbstract):
+    def setUp(self):
+        super(TestProcessPartition, self).setUp()
         self.driver._partition_data = self.mock_part_data = mock.MagicMock()
         self.driver._add_partition = self.mock_add_part = mock.MagicMock()
         self.mock_add_part.return_value = self.mock_part = mock.MagicMock()

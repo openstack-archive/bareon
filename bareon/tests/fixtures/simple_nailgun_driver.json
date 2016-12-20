@@ -63,7 +63,17 @@
         "mco_identity": -1,
         "pm_data": {
             "kernel_params": "console=ttyS0,9600 console=tty0 rootdelay=90 nomodeset",
-            "ks_spaces": []
+            "ks_spaces": [
+                {
+                    "type": "disk",
+                    "id": "dummy-disk-id",
+                    "name": "dummy0",
+                    "free_space": 0,
+                    "size": 128,
+                    "extra": [],
+                    "volumes": []
+                }
+            ]
         },
         "puppet_auto_setup": 1,
         "puppet_enable": 0,

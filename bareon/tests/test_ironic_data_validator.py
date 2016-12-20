@@ -16,10 +16,10 @@ import copy
 
 import unittest2
 
-from bareon.drivers.data import ks_spaces_validator as kssv
+from bareon.drivers.data import ironic
 from bareon import errors
 
-SAMPLE_SCHEME = [
+SAMPLE_CHUNK_PARTITIONS = [
     {
         "id": {
             "type": "name",
@@ -175,67 +175,108 @@ SAMPLE_SCHEME = [
     }
 ]
 
+SAMPLE_PAYLOAD = {
+    'partitions': SAMPLE_CHUNK_PARTITIONS,
+    'images': []
+}
 
-class TestKSSpacesValidator(unittest2.TestCase):
+
+class TestIronicDataValidator(unittest2.TestCase):
     def setUp(self):
-        super(TestKSSpacesValidator, self).setUp()
-        self.fake_scheme = copy.deepcopy(SAMPLE_SCHEME)
+        super(TestIronicDataValidator, self).setUp()
+        self.payload = copy.deepcopy(SAMPLE_PAYLOAD)
 
-    def test_validate_ok(self):
-        kssv.validate(self.fake_scheme, 'ironic')
+    def test_no_error(self):
+        ironic.Ironic.validate_data(self.payload)
 
-    def test_validate_jsoschema_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError,
-                          kssv.validate, [{}], 'ironic')
+    def test_fail(self):
+        self.assertRaises(
+            errors.WrongInputDataError, ironic.Ironic.validate_data, [{}])
 
-    def test_validate_no_disks_fail(self):
-        self.assertRaises(errors.WrongPartitionSchemeError,
-                          kssv.validate, self.fake_scheme[-2:], 'ironic')
+    def test_required_fields(self):
+        for field in ['partitions']:
+            payload = copy.deepcopy(self.payload)
+            del payload[field]
+            self.assertRaises(
+                errors.WrongInputDataError, ironic.Ironic.validate_data,
+                payload)
 
-    def test_validate_16T_root_volume_fail(self):
-        self.fake_scheme[3]['volumes'][0]['size'] = 16777216 + 1
-        self.assertRaises(errors.WrongPartitionSchemeError,
-                          kssv.validate, self.fake_scheme, 'ironic')
+    def test_disks_no_disks_fail(self):
+        partitions = self.payload['partitions']
+        partitions[:-2] = []
+        self.assertRaises(
+            errors.WrongInputDataError, ironic.Ironic.validate_data,
+            self.payload)
 
-    def test_validate_volume_type_fail(self):
+    @unittest2.skip(
+        'FIXME(dbogun): Invalid test - failed because invalid data '
+        'type(expect sting in size field) but not because illegal partition '
+        'size')
+    def test_disks_16T_root_volume_fail(self):
+        partitions = self.payload['partitions']
+        partitions[3]['volumes'][0]['size'] = 16777216 + 1
+        self.assertRaises(
+            errors.WrongInputDataError, ironic.Ironic.validate_data,
+            self.payload)
+
+    def test_disks_volume_type_fail(self):
         incorrect_values_for_type = [
             False, True, 0, 1, None, object
         ]
+        partitions = self.payload['partitions']
         for value in incorrect_values_for_type:
-            self.fake_scheme[0]['volumes'][1]['type'] = value
-            self.assertRaises(errors.WrongPartitionSchemeError,
-                              kssv.validate, self.fake_scheme, 'ironic')
+            partitions[0]['volumes'][1]['type'] = value
+            self.assertRaises(
+                errors.WrongInputDataError, ironic.Ironic.validate_data,
+                self.payload)
 
-    def test_validate_volume_size_fail(self):
+    def test_disks_volume_size_fail(self):
         incorrect_values_for_size = [
             False, True, 0, 1, None, object
         ]
+        partitions = self.payload['partitions']
         for value in incorrect_values_for_size:
-            self.fake_scheme[0]['volumes'][1]['size'] = value
-            self.assertRaises(errors.WrongPartitionSchemeError,
-                              kssv.validate, self.fake_scheme, 'ironic')
+            partitions[0]['volumes'][1]['size'] = value
+            self.assertRaises(
+                errors.WrongInputDataError, ironic.Ironic.validate_data,
+                self.payload)
 
-    def test_validate_device_id_fail(self):
+    def test_disks_device_id_fail(self):
         incorrect_values_for_id = [
             False, True, 0, 1, None, object
         ]
+        partitions = self.payload['partitions']
         for value in incorrect_values_for_id:
-            self.fake_scheme[0]['id'] = value
-            self.assertRaises(errors.WrongPartitionSchemeError,
-                              kssv.validate, self.fake_scheme, 'ironic')
+            partitions[0]['id'] = value
+            self.assertRaises(
+                errors.WrongInputDataError, ironic.Ironic.validate_data,
+                self.payload)
 
-    def test_validate_missed_property(self):
+    def test_disks_missed_property_fail(self):
         required = ['id', 'size', 'volumes', 'type']
         for prop in required:
-            fake = copy.deepcopy(self.fake_scheme)
-            del fake[0][prop]
-            self.assertRaises(errors.WrongPartitionSchemeError,
-                              kssv.validate, fake, 'ironic')
+            fake = copy.deepcopy(self.payload)
+            partitions = fake['partitions']
+            del partitions[0][prop]
+            self.assertRaises(
+                errors.WrongInputDataError, ironic.Ironic.validate_data, fake)
 
     def test_validate_missed_volume_property(self):
         required = ['type', 'size', 'vg']
         for prop in required:
-            fake = copy.deepcopy(self.fake_scheme)
-            del fake[0]['volumes'][3][prop]
-            self.assertRaises(errors.WrongPartitionSchemeError,
-                              kssv.validate, fake, 'ironic')
+            fake = copy.deepcopy(self.payload)
+            partitions = fake['partitions']
+            del partitions[0]['volumes'][3][prop]
+            self.assertRaises(
+                errors.WrongInputDataError, ironic.Ironic.validate_data, fake)
+
+    def test_disks_keep_data_flag_type(self):
+        partitions = self.payload['partitions']
+        partitions[0]['volumes'][1]['keep_data'] = "True"
+        self.assertRaises(
+            errors.WrongInputDataError, ironic.Ironic.validate_data,
+            self.payload)
+
+    @staticmethod
+    def _get_disks(payload):
+        return payload['partitions']
