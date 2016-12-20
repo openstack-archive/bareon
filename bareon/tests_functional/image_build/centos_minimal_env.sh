@@ -16,6 +16,8 @@
 
 # A default environment used for image build/sync.
 
+export BUILD_DIR=/tmp/rft_image_build
+
 export DIB_SRC=https://github.com/openstack/diskimage-builder.git
 export DIB_BRANCH=master
 
@@ -24,9 +26,6 @@ export DIB_UTILS_BRANCH=master
 
 export DIB_ELEMENTS_SRC=https://github.com/openstack/bareon-image-elements.git
 export DIB_ELEMENTS_BRANCH=master
-
-export FUEL_KEY=https://raw.githubusercontent.com/stackforge/fuel-main/master/bootstrap/ssh/id_rsa
-export BUILD_DIR=/tmp/rft_image_build
 
 export GOLDEN_IMAGE_DIR=/tmp/rft_golden_images/
 export GOLDEN_IMAGE_SRC=http://images.fuel-infra.org/rft_golden_images/
