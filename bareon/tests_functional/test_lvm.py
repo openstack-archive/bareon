@@ -13,31 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest2
 import utils
 
-from ramdisk_func_test.environment import Environment
+from bareon import tests_functional
 
 
-class LvmTestCase(unittest2.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super(LvmTestCase, cls).setUpClass()
-        cls.env = Environment(
-            node_templates="./bareon/tests_functional/node_templates"
-        )
-        cls.env.setupclass()
-
-    def tearDown(self):
-        super(LvmTestCase, self).tearDown()
-        self.env.teardown()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(LvmTestCase, cls).tearDownClass()
-        cls.env.teardownclass()
-
+class LvmTestCase(tests_functional.TestCase):
     def test_multi_volume_multi_group(self):
         deploy_conf = {
             "images": [
