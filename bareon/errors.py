@@ -31,10 +31,10 @@ class InputDataSchemaValidationError(WrongInputDataError):
     def __init__(self, defects):
         human_readable_defects = []
         for idx, d in enumerate(defects):
-            path = [''] + list(d.path)
+            path = list(d.path)
             path = '/'.join((str(x) for x in path))
             human_readable_defects.append(
-                '#{} ({}): {}'.format(idx, path, d.message))
+                '{:>2} (/{}): {}'.format('#{}'.format(idx), path, d.message))
 
         indent = ' ' * 4
         separator = '\n{}'.format(indent)
