@@ -20,6 +20,7 @@ import pkg_resources
 import six
 
 import bareon.drivers.data
+import bareon.errors
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -29,6 +30,10 @@ class BaseDataDriver(object):
     For example, data validation methods,
     methods for getting object schemes, etc.
     """
+
+    # Can be used by clients outside of bareon package. Client who loads
+    # data-driver via stevedore
+    exc = bareon.errors
 
     data_validation_schema = None
 
