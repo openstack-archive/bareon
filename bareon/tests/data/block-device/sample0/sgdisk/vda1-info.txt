@@ -1,0 +1,7 @@
+Partition GUID code: 21686148-6449-6E6F-744E-656564454649 (BIOS boot partition)
+Partition unique GUID: D1950C77-BD81-405B-99AF-997CCCF42C3A
+First sector: 2048 (at 1024.0 KiB)
+Last sector: 51199 (at 25.0 MiB)
+Partition size: 49152 sectors (24.0 MiB)
+Attribute flags: 0000000000000000
+Partition name: 'primary'

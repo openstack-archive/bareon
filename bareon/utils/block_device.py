@@ -338,22 +338,22 @@ class _GDiskMessage(object):
     def _parse_notice(self, data):
         notice = []
 
-        idx = -1
         for idx, line in enumerate(data):
             is_boundary = self._is_notice_boundary(line)
             if is_boundary:
-                if idx:
-                    break
-                continue
+                if not idx:
+                    continue
+                data[:idx + 1] = []
+                self._ensure_boundary(data)
+                break
+            elif not idx:
+                break
             notice.append(line.rstrip())
 
-        data[:idx + 1] = []
-        if 0 < idx:
-            self._ensure_boundary(data)
-
+        notice = ' '.join(notice)
         if not notice:
             notice = None
-        return ' '.join(notice)
+        return notice
 
     def _parse_payload(self, data):
         idx = -1

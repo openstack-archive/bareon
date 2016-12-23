@@ -70,7 +70,7 @@ class BlockDeviceMock(object):
     def open(self, path):
         path = os.path.join(self.root, path)
         try:
-            fd = open(path)
+            fd = open(path, 'r')
         except IOError:
             raise RuntimeError('Missing test-data file: {}'.format(path))
         return fd
