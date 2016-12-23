@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import time
 
 import mock
@@ -270,52 +271,197 @@ class TestPartitionUtils(unittest2.TestCase):
         self.assertEqual(mock_exec_expected_calls, mock_exec.call_args_list)
         mock_udev.assert_called_once_with()
 
-    @mock.patch.object(utils, 'udevadm_settle')
+    @mock.patch.object(utils, 'udevadm_settle', mock.Mock())
+    @mock.patch.object(pu, '_disk_dummy')
+    @mock.patch.object(pu, '_disk_info_by_lsblk', mock.Mock())
+    @mock.patch.object(pu, '_disk_info_by_file', mock.Mock())
+    @mock.patch.object(pu, '_disk_info_by_parted')
+    def test_info(self, _disk_info_by_parted, disk_dummy):
+        disk_dummy.return_value = {
+            'generic': {},
+            'parts': [{'flags': set(), 'num': None}]}
+        pu.info('/dev/fake')
+        self.assertEqual(1, _disk_info_by_parted.call_count)
+
+    @mock.patch.object(utils, 'udevadm_settle', mock.Mock())
+    @mock.patch.object(pu, '_disk_dummy')
+    @mock.patch.object(pu, '_disk_info_by_lsblk', mock.Mock())
+    @mock.patch.object(pu, '_disk_info_by_file', mock.Mock())
+    @mock.patch.object(pu, '_disk_info_by_parted')
+    def test_info_no_partitions(self, _disk_info_by_parted, disk_dummy):
+        disk_dummy.return_value = {
+            'generic': {},
+            'parts': []}
+        pu.info('/dev/fake')
+        self.assertEqual(0, _disk_info_by_parted.call_count)
+
+    @mock.patch.object(utils, 'udevadm_settle', mock.Mock())
     @mock.patch.object(utils, 'execute')
-    def test_info(self, mock_exec, mock_udev):
-        self.maxDiff = None
-        mock_exec.side_effect = [
-            ('BYT;\n'
-             '/dev/fake:476940MiB:scsi:512:4096:msdos:ATA 1BD14;\n'  # parted
-             '1:0.03MiB:1.00MiB:0.97MiB:free;\n'
-             '1:1.00MiB:191MiB:190MiB:ext3::boot;\n'
-             '2:191MiB:476939MiB:476748MiB:::lvm;\n'
-             '1:476939MiB:476940MiB:1.02MiB:free;\n', 0),
-
-            ("/dev/sda: x86 boot sector; partition 1: ID=0x83", 0),  # file
-            ("", 0),
-            ("uuid1", 0),  # blkid
-            ("uuid2", 0),
-            ("", 0)
+    def test_info_merge(self, utils_exec):
+        utils_exec.side_effect = [
+            (_info_lsblk_output, ''),
+            (_info_file_output, ''),
+            (_info_parted_output, '')
         ]
+
+        disk = pu.info('/dev/vda')
+        partitions = disk['parts']
+        partitions_by_dev = {x['dev']: x for x in partitions}
+
+        vda2 = partitions_by_dev['/dev/vda2']
+        self.assertEqual(vda2['uuid'], 'c5c1e495-a44e-4ee5-ab49-ed8012ae456e')
+        self.assertEqual(vda2['fstype'], 'ext4')
+        self.assertEqual(vda2['begin'], 25)
+        self.assertEqual(vda2['end'], 4025)
+
+        vda3 = partitions_by_dev['/dev/vda3']
+        self.assertEqual(vda3['uuid'], 'e0f19b74-c80a-4cef-bc3f-0a51f54b23a6')
+        self.assertEqual(vda3['fstype'], 'linux-swap(v1)')
+        self.assertEqual(vda3['begin'], 4025)
+        self.assertEqual(vda3['end'], 6025)
+
+        vda4 = partitions_by_dev['/dev/vda4']
+        self.assertEqual(vda4['uuid'], '1ebab003-f31b-43d8-9bff-fe23eb86c1db')
+        self.assertEqual(vda4['fstype'], 'ext4')
+        self.assertEqual(vda4['begin'], 6025)
+        self.assertEqual(vda4['end'], 9925)
+
+    @mock.patch.object(utils, 'execute')
+    def test__disk_info_by_lsblk(self, utils_exec):
+        utils_exec.return_value = (_info_lsblk_output, '')
+
         expected = {
-            'generic': {'dev': '/dev/fake',
+            'generic': {
+                'dev': '/dev/vda',
+                'size': 11264,
+                'logical_block': 512,
+                'physical_block': 512,
+                'has_bootloader': None,
+                'model': None,
+                'table': None},
+
+            'parts': [
+                {
+                    'master_suffix': '1',
+                    'dev': '/dev/vda1',
+                    'disk_dev': '/dev/vda',
+                    'name': '/dev/vda1',
+                    'num': '1',
+                    'size': 24,
+                    'fstype': None,
+                    'begin': None, 'end': None, 'type': None, 'uuid': None,
+                    'flags': set([])
+                }, {
+                    'master_suffix': '2',
+                    'dev': '/dev/vda2',
+                    'disk_dev': '/dev/vda',
+                    'name': '/dev/vda2',
+                    'num': '2',
+                    'size': 4000,
+                    'fstype': 'ext4',
+                    'begin': None, 'end': None, 'type': None,
+                    'uuid': 'c5c1e495-a44e-4ee5-ab49-ed8012ae456e',
+                    'flags': set([])
+                }, {
+                    'master_suffix': '3',
+                    'dev': '/dev/vda3',
+                    'disk_dev': '/dev/vda',
+                    'name': '/dev/vda3',
+                    'num': '3',
+                    'size': 2000,
+                    'fstype': 'swap',
+                    'begin': None, 'end': None, 'type': None,
+                    'uuid': 'e0f19b74-c80a-4cef-bc3f-0a51f54b23a6',
+                    'flags': set([])
+                }, {
+                    'master_suffix': '4',
+                    'dev': '/dev/vda4',
+                    'disk_dev': '/dev/vda',
+                    'name': '/dev/vda4',
+                    'num': '4',
+                    'size': 3900,
+                    'fstype': 'ext4',
+                    'begin': None, 'end': None, 'type': None,
+                    'uuid': '1ebab003-f31b-43d8-9bff-fe23eb86c1db',
+                    'flags': set([])
+                }]}
+
+        disk = pu._disk_dummy('/dev/vda')
+        pu._disk_info_by_lsblk(disk)
+
+        self.maxDiff = None
+        self.assertDictEqual(expected, disk)
+
+    @mock.patch.object(utils, 'execute')
+    def test__disk_info_by_parted(self, utils_exec):
+        utils_exec.return_value = (_info_parted_output, '')
+
+        """
+        1:0.02MiB:1.00MiB:0.98MiB:free;
+        1:1.00MiB:25.0MiB:24.0MiB::primary:bios_grub;
+        2:25.0MiB:4025MiB:4000MiB:ext4:primary:;
+        3:4025MiB:6025MiB:2000MiB:linux-swap(v1):primary:;
+        4:6025MiB:9925MiB:3900MiB:ext4:primary:;
+        1:9925MiB:11264MiB:1339MiB:free;
+        """
+        expected = {
+            'generic': {'dev': '/dev/vda',
+                        'size': 11264,
                         'logical_block': 512,
-                        'model': 'ATA 1BD14',
-                        'physical_block': 4096,
-                        'size': 476940,
-                        'table': 'msdos',
-                        'has_bootloader': True},
+                        'physical_block': 512,
+                        'model': 'Virtio Block Device',
+                        'table': 'gpt',
+                        'has_bootloader': None},
 
-            'parts': [{'disk_dev': '/dev/fake', 'name': '/dev/fake1',
+            'parts': [{'dev': None, 'master_suffix': None,
+                       'disk_dev': '/dev/vda', 'name': None,
                        'begin': 1, 'end': 1, 'fstype': 'free',
-                       'num': 1, 'size': 1, 'uuid': "",
-                       'type': None, 'flags': []},
-                      {'disk_dev': '/dev/fake', 'name': '/dev/fake1',
-                       'begin': 1, 'end': 191, 'fstype': 'ext3',
-                       'num': 1, 'size': 190, 'uuid': "uuid1",
-                       'type': None, 'flags': ['boot']},
-                      {'disk_dev': '/dev/fake', 'name': '/dev/fake2',
-                       'begin': 191, 'end': 476939, 'fstype': None,
-                       'num': 2, 'size': 476748, 'uuid': "uuid2",
-                       'type': None, 'flags': ['lvm']},
-                      {'disk_dev': '/dev/fake', 'name': '/dev/fake1',
-                       'begin': 476939, 'end': 476940,
-                       'fstype': 'free', 'num': 1, 'size': 2, 'uuid': "",
-                       'type': None, 'flags': []}]}
+                       'num': None, 'size': 1, 'uuid': None,
+                       'type': None, 'flags': set()},
+                      {'dev': None, 'master_suffix': None,
+                       'disk_dev': '/dev/vda', 'name': None,
+                       'begin': 9925, 'end': 11264,
+                       'fstype': 'free', 'num': None, 'size': 1339,
+                       'uuid': None, 'type': None, 'flags': set()},
+                      {'dev': '/dev/vda1', 'master_suffix': '1',
+                       'disk_dev': '/dev/vda', 'name': '/dev/vda1',
+                       'begin': 1, 'end': 25, 'fstype': None,
+                       'num': '1', 'size': 24, 'uuid': None,
+                       'type': 'primary', 'flags': set(('bios_grub',))},
+                      {'dev': '/dev/vda2', 'master_suffix': '2',
+                       'disk_dev': '/dev/vda', 'name': '/dev/vda2',
+                       'begin': 25, 'end': 4025, 'fstype': 'ext4',
+                       'num': '2', 'size': 4000, 'uuid': None,
+                       'type': 'primary', 'flags': set()},
+                      {'dev': '/dev/vda3', 'master_suffix': '3',
+                       'disk_dev': '/dev/vda', 'name': '/dev/vda3',
+                       'begin': 4025, 'end': 6025, 'fstype': 'linux-swap(v1)',
+                       'num': '3', 'size': 2000, 'uuid': None,
+                       'type': 'primary', 'flags': set()},
+                      {'dev': '/dev/vda4', 'master_suffix': '4',
+                       'disk_dev': '/dev/vda', 'name': '/dev/vda4',
+                       'begin': 6025, 'end': 9925, 'fstype': 'ext4',
+                       'num': '4', 'size': 3900, 'uuid': None,
+                       'type': 'primary', 'flags': set()}
+                      ]}
 
-        actual = pu.info('/dev/fake')
-        self.assertDictEqual(expected, actual)
+        disk = pu._disk_dummy('/dev/fake')
+        pu._disk_info_by_parted(disk)
+
+        self.maxDiff = None
+        self.assertDictEqual(expected, disk)
+
+    @mock.patch.object(utils, 'execute')
+    def test__disk_info_by_file(self, utils_exec):
+        utils_exec.return_value = (_info_file_output, '')
+
+        disk = pu._disk_dummy('/dev/fake')
+        expected = copy.deepcopy(disk)
+        expected['generic']['has_bootloader'] = True
+
+        pu._disk_info_by_file(disk)
+
+        self.assertDictEqual(expected, disk)
 
     @mock.patch.object(utils, 'execute')
     def test_reread_partitions_ok(self, mock_exec):
@@ -341,3 +487,26 @@ class TestPartitionUtils(unittest2.TestCase):
         self.assertRaises(errors.BaseError, pu.reread_partitions,
                           '/dev/fake', out='Device or resource busy',
                           timeout=-40)
+
+
+_info_lsblk_output = """\
+vda  11811160064     512     512
+vda1    25165824     512     512
+vda2  4194304000     512     512 c5c1e495-a44e-4ee5-ab49-ed8012ae456e ext4
+vda3  2097152000     512     512 e0f19b74-c80a-4cef-bc3f-0a51f54b23a6 swap
+vda4  4089446400     512     512 1ebab003-f31b-43d8-9bff-fe23eb86c1db ext4
+"""
+
+_info_parted_output = """\
+BYT;
+/dev/vda:11264MiB:virtblk:512:512:gpt:Virtio Block Device:;
+1:0.02MiB:1.00MiB:0.98MiB:free;
+1:1.00MiB:25.0MiB:24.0MiB::primary:bios_grub;
+2:25.0MiB:4025MiB:4000MiB:ext4:primary:;
+3:4025MiB:6025MiB:2000MiB:linux-swap(v1):primary:;
+4:6025MiB:9925MiB:3900MiB:ext4:primary:;
+1:9925MiB:11264MiB:1339MiB:free;
+"""
+
+_info_file_output = ('DOS/MBR boot sector DOS/MBR boot sector DOS executable '
+                     '(COM), boot code\012- data')

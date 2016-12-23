@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import time
 
 from oslo_log import log as logging
@@ -28,67 +29,26 @@ GiB = MiB * 1024
 TiB = GiB * 1024
 
 
-def parse_partition_info(parted_output):
-    lines = parted_output.split('\n')
-    generic_params = lines[1].rstrip(';').split(':')
-    generic = {
-        'dev': generic_params[0],
-        'size': utils.parse_unit(generic_params[1], 'MiB'),
-        'logical_block': int(generic_params[3]),
-        'physical_block': int(generic_params[4]),
-        'table': generic_params[5],
-        'model': generic_params[6]
-    }
-    parts = []
-    for line in lines[2:]:
-        line = line.strip().rstrip(';')
-        if not line:
-            continue
-        part_params = line.split(':')
-        part = {
-            'disk_dev': generic['dev'],
-            'name': "%s%s" % (generic['dev'], int(part_params[0])),
-            'num': int(part_params[0]),
-            'begin': utils.parse_unit(part_params[1], 'MiB'),
-            'end': utils.parse_unit(part_params[2], 'MiB'),
-            'size': utils.parse_unit(part_params[3], 'MiB'),
-            'fstype': part_params[4] or None,
-            'type': None,
-            'flags': []
-        }
-        if part['fstype'] != 'free':
-            part['type'] = part_params[5] or None
-            part['flags'] = [f for f in part_params[6].split(', ') if f]
-
-        parts.append(part)
-
-    return {'generic': generic, 'parts': parts}
-
-
 def info(dev):
     utils.udevadm_settle()
-    parted_output = utils.execute('parted', '-s', dev, '-m',
-                                  'unit', 'MiB',
-                                  'print free',
-                                  check_exit_code=[0])[0]
-    LOG.debug('Parted info output: \n%s' % parted_output)
 
-    result = parse_partition_info(parted_output)
+    disk = _disk_dummy(dev)
+    _disk_info_by_lsblk(disk)
+    _disk_info_by_file(disk)
+    if disk['parts']:
+        # avoid parted call, because parted exit with failure if there is no
+        # partition table on disk
+        _disk_info_by_parted(disk)
 
-    file_output = utils.execute('file', '-sk', dev,
-                                check_exit_code=[0])[0]
-    LOG.debug('File info output: \n%s' % file_output)
+    # satisfy existing format expectations
+    partitions = disk['parts']
+    for p in partitions:
+        if p['num'] is not None:
+            p['num'] = int(p['num'])
+        p['flags'] = sorted(p['flags'])
 
-    result['generic']['has_bootloader'] = 'boot sector' in file_output
-    for part in result['parts']:
-        blkid_output = utils.execute('blkid -s UUID -o value',
-                                     part['name'],
-                                     check_exit_code=False)[0].strip()
-        LOG.debug('Blkid output: \n%s' % blkid_output)
-        part['uuid'] = blkid_output
-
-    LOG.debug('Info result: %s' % result)
-    return result
+    LOG.debug('Info result: %s' % disk)
+    return disk
 
 
 def wipe(dev):
@@ -243,3 +203,176 @@ def reread_partitions(dev, out='Device or resource busy', timeout=60):
 def get_uuid(device):
     return utils.execute('blkid', '-o', 'value', '-s', 'UUID', device,
                          check_exit_code=[0])[0].strip()
+
+
+def _disk_dummy(device):
+    metadata = {
+        'dev': device,
+        'size': None,
+        'logical_block': None,
+        'physical_block': None,
+        'table': None,
+        'model': None,
+        'has_bootloader': None
+    }
+    return {'generic': metadata, 'parts': []}
+
+
+def _disk_partition_dummy(device, suffix, disk):
+    return {
+        'dev': device,
+        'master_suffix': suffix,
+        'disk_dev': disk['dev'],  # TODO(dbogun): remove, can be calculated
+        'name': device,  # TODO(dbogun): use 'dev' key instead
+        'num': suffix,   # TODO(dbogun): use 'master_suffix' key instead
+        'fstype': None,
+        'size': None,
+        'begin': None,
+        'end': None,
+        'type': None,
+        'uuid': None,
+        'flags': set(),
+    }
+
+
+def _disk_info_by_lsblk(disk):
+    meta, partitions = disk['generic'], disk['parts']
+
+    LOG.info('Collect disk structure for %s using lsblk', meta['dev'])
+
+    output = utils.execute(
+        'lsblk', '--bytes', '--list', '--noheadings', '--all',
+        '--output=NAME,SIZE,PHY-SEC,LOG-SEC,UUID,FSTYPE', meta['dev'])[0]
+    output = output.strip('\n')
+    LOG.debug('lsblk output:\n%s', output)
+
+    record_field_names = (
+        'dev', 'size', 'physical_block', 'logical_block', 'uuid', 'fstype')
+    partitions_map = {x['master_suffix']: x for x in partitions}
+    dev_name = None
+    is_master = True
+    for record in output.splitlines():
+        record = record.split()
+        record = dict((f, v) for f, v in zip(record_field_names, record))
+        # FIXME(dbogun): use "rounded" (MiB) values is bad idea
+        record['size'] = int(record['size']) // 2**20  # Convert into MiB
+        try:
+            record['fstype'] = record['fstype'].lower()
+        except KeyError:
+            pass
+
+        for f in ('physical_block', 'logical_block'):
+            record[f] = int(record[f])
+
+        if is_master:
+            dev_name = record.pop('dev')
+            record.pop('fstype', None)
+            meta.update(record)
+        else:
+            suffix = record['dev'][len(dev_name):]
+            record['dev'] = os.path.join('/dev', record['dev'])
+            try:
+                p = partitions_map[suffix]
+            except KeyError:
+                p = _disk_partition_dummy(record['dev'], suffix, meta)
+                partitions.append(p)
+
+            p['size'] = record['size']
+            p['uuid'] = record.get('uuid')
+            p['fstype'] = record.get('fstype')
+
+        is_master = False
+
+    partitions.sort(key=lambda x: x['master_suffix'])
+
+
+def _disk_info_by_parted(disk):
+    meta, partitions = disk['generic'], disk['parts']
+
+    LOG.info('Collect disk structure for %s using parted', meta['dev'])
+    # FIXME(dbogun): use "rounded" (MiB) values is bad idea
+    output = utils.execute(
+        'parted', meta['dev'], '--script', '--machine',
+        'unit MiB print free')[0]
+    LOG.debug('Parted output:\n%s', output)
+
+    disk_field_names = (
+        'dev', 'size', None, 'logical_block', 'physical_block', 'table',
+        'model')
+    partition_field_names = (
+        'suffix', 'begin', 'end', 'size', 'fstype', 'type', 'flags')
+
+    partitions_map = {x['master_suffix']: x for x in partitions}
+    state = 'intro'
+    for record in output.split(';'):
+        record = record.strip()
+
+        if not record:
+            state = 'intro'
+
+        elif state == 'intro':
+            if record == 'BYT':
+                state = 'master'
+
+        elif state == 'master':
+            state = 'partition'
+
+            record = dict(
+                (f, v) for f, v in zip(disk_field_names, record.split(':')))
+            record['size'] = utils.parse_unit(record['size'], 'MiB')
+            for f in ('physical_block', 'logical_block'):
+                record[f] = int(record[f])
+            del record[None]
+            meta.update(record)
+
+        elif state == 'partition':
+            record = dict(
+                (f, v) for f, v in zip(
+                    partition_field_names, record.split(':')))
+            for f in record:
+                if record[f]:
+                    continue
+                record[f] = None
+            for f in ('size', 'begin', 'end'):
+                record[f] = utils.parse_unit(record[f], 'MiB')
+
+            if record['fstype'] == 'free':
+                record['suffix'] = None
+
+            try:
+                if record['suffix'] is None:
+                    raise KeyError
+                p = partitions_map[record['suffix']]
+            except KeyError:
+                dev = None
+                if record['suffix']:
+                    dev = '{}{}'.format(meta['dev'], record['suffix'])
+                p = _disk_partition_dummy(dev, record['suffix'], meta)
+                partitions.append(p)
+
+            flags = record.pop('flags', '')
+            if flags:
+                flags = flags.split(',')
+                p['flags'].update(x.strip().lower() for x in flags)
+
+            del record['suffix']
+            p.update(record)
+
+        else:
+            raise RuntimeError(
+                'Internal error - impossible internal state %r', state)
+
+    partitions.sort(key=lambda x: (x['master_suffix'], x['begin']))
+
+
+def _disk_info_by_file(disk):
+    meta = disk['generic']
+    LOG.info('Collect disk structure for %s using file', meta['dev'])
+
+    output = utils.execute(
+        'file', '--brief', '--keep-going', '--special-files', meta['dev'])[0]
+    LOG.debug('file output: \n%s' % output)
+
+    records = (x.strip() for x in output.split(';'))
+
+    meta['has_bootloader'] = any('boot sector' in x for x in records)
