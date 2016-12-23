@@ -49,6 +49,10 @@ class BlockDeviceSchemeError(BaseError):
     pass
 
 
+class BlockDeviceAllocationError(BlockDeviceSchemeError):
+    pass
+
+
 class WrongPartitionSchemeError(BaseError):
     pass
 

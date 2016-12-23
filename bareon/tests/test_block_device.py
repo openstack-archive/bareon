@@ -15,8 +15,13 @@
 
 import unittest2
 
+from bareon import errors
 from bareon.tests import utils
 from bareon.utils import block_device
+
+sector = 512
+KiB = 1024
+MiB = KiB * KiB
 
 
 class TestBlockDevice(unittest2.TestCase):
@@ -54,3 +59,31 @@ class TestBlockDevice(unittest2.TestCase):
                 for p in disk.partitions]
 
             self.assertEqual(expect[sample], actual)
+
+    def test_allocate(self):
+        with utils.BlockDeviceMock('empty-1024MiB'):
+            # disk use alignment 2048 sectors
+            disk = block_device.Disk.new_by_device_scan('/dev/loop0')
+            partitions = [
+                disk.allocate(size) for size in (
+                    (2048 - 512) * sector,
+                    2048 * 8 * sector,
+                    2048 * 8 * sector)]
+
+        actual = [
+            (p.begin, p.end, p.size, p.index, p.code)
+            for p in partitions]
+
+        expect = [
+            (2048, 3583, 1536, None, None),
+            (4096, 20479, 16384, None, None),
+            (20480, 36863, 16384, None, None)]
+
+        self.assertEqual(expect, actual)
+
+    def test_allocate_no_space_left(self):
+        with utils.BlockDeviceMock('empty-1024MiB'):
+            disk = block_device.Disk.new_by_device_scan('/dev/loop0')
+
+            self.assertRaises(
+                errors.BlockDeviceAllocationError, disk.allocate, 1024 * MiB)

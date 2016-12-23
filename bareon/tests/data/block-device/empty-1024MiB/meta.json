@@ -1,0 +1,18 @@
+{
+  "sgdisk": {
+    "/dev/loop0": {
+      "root": "sgdisk/loop0.txt",
+      "info": {}
+    }
+  },
+  "file": {
+    "/dev/loop0": "file/loop0.txt"
+  },
+  "lsblk": {},
+
+  "py-call": {
+    "os.stat": {
+      "/dev/loop0": true
+    }
+  }
+}

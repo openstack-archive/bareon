@@ -111,6 +111,10 @@ class Disk(BlockDevicePayload):
 
     @property
     def partitions(self):
+        """Iterate over existing partitions.
+
+        Iterate over existing partitions (not free and not reserved segments)
+        """
         for segment in self._space:
             if segment.is_free():
                 continue
@@ -120,6 +124,11 @@ class Disk(BlockDevicePayload):
 
     @property
     def segments(self):
+        """Iterate over segments.
+
+        Iterate over all(except reserved) segments. Useful if someone is going
+        to analise existing free segments.
+        """
         for segment in self._space:
             if segment.kind == segment.KIND_RESERVED:
                 continue
@@ -129,6 +138,18 @@ class Disk(BlockDevicePayload):
                 yield segment.payload
 
     def allocate(self, size_bytes):
+        """Allocate new patition on device.
+
+        There is no any manipulation on real
+        disk. It change only internal disk representation. Use first free block
+        big enough to fit requested size. Raise BlockDeviceAllocationError if
+        there is no suitable free block.
+
+        :param size_bytes: required partition size in bytes
+        :type size_bytes: int
+        :return: created partition object
+        :rtype: Partition
+        """
         size = size_bytes // self.block_size
         size += int(size_bytes != size * self.block_size)
 
@@ -153,7 +174,7 @@ class Disk(BlockDevicePayload):
                 x for x in (allocation, tail) if not x.is_null()]
             break
         else:
-            raise errors.BlockDeviceSchemeError(
+            raise errors.BlockDeviceAllocationError(
                 'Unable to allocate {} sectors on {}'.format(size, self.dev))
 
         self._align_free_blocks()
@@ -161,6 +182,13 @@ class Disk(BlockDevicePayload):
         return partition
 
     def register(self, partition):
+        """Mark corresponding sectors as busy by received partitions.
+
+        Used during disk scan to build internal disk schema representation.
+
+        :param partition: existing partition
+        :type partition: Partition
+        """
         allocation = self._reserve(
             partition.begin, partition.end, _DiskSpaceDescriptor.KIND_BUSY)
         allocation.payload = partition
@@ -224,7 +252,7 @@ class Disk(BlockDevicePayload):
                 continue
 
             offset = self.alignment - segment.begin % self.alignment
-            if not offset:
+            if offset == self.alignment:
                 continue
 
             align, free = segment.split(segment.begin + offset)
