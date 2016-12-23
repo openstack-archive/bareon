@@ -1,0 +1,1 @@
+Linux/i386 swap file (new style), version 1 (4K pages), size 2499839 pages, no label, UUID=ad5b5e5e-b999-468f-8ebb-032c7281e2bd\012- data

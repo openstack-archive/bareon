@@ -45,6 +45,10 @@ class InputDataSchemaValidationError(WrongInputDataError):
         self.defects = defects
 
 
+class BlockDeviceSchemeError(BaseError):
+    pass
+
+
 class WrongPartitionSchemeError(BaseError):
     pass
 

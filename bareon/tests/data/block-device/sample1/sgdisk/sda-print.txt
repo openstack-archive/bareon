@@ -1,0 +1,20 @@
+
+***************************************************************
+Found invalid GPT and valid MBR; converting MBR to GPT format
+in memory.
+***************************************************************
+
+Disk /dev/sda: 1953525168 sectors, 931.5 GiB
+Logical sector size: 512 bytes
+Disk identifier (GUID): E5ECD5B2-ED89-48AA-8601-DC040CBC3B31
+Partition table holds up to 128 entries
+First usable sector is 34, last usable sector is 1953525134
+Partitions will be aligned on 2048-sector boundaries
+Total free space is 9581 sectors (4.7 MiB)
+
+Number  Start (sector)    End (sector)  Size       Code  Name
+   1            2048        49999871   23.8 GiB    8300  Linux filesystem
+   3        49999872        99999743   23.8 GiB    8300  Linux filesystem
+   5       100001792       120000511   9.5 GiB     8200  Linux swap
+   6       120002560      1936746495   866.3 GiB   8300  Linux filesystem
+   7      1936748544      1953523711   8.0 GiB     8300  Linux filesystem

@@ -344,39 +344,41 @@ class Ironic(GenericDataDriver):
         # NOTE(lobur): Only disks/partitions currently supported.
         # No vgs/volumes
         LOG.debug('--- Reading HW partition scheme from the node ---')
-        partition_schema = objects.PartitionScheme()
 
-        disk_infos = [pu.info(disk['name']) for disk in self.hu_disks]
         fstab = self._find_hw_fstab()
 
         LOG.debug('Scanning all disks on the node')
-        for disk_info in disk_infos:
+        partition_schema = objects.PartitionScheme()
+        for dev in self.hu_disks:
+            disk_info = pu.scan_device(dev['name'])
+            disk_meta = disk_info['generic']
+
             parted = partition_schema.add_parted(
-                name=disk_info['generic']['dev'],
-                label=disk_info['generic']['table'],
-                install_bootloader=disk_info['generic']['has_bootloader']
+                name=disk_meta['dev'],
+                label=disk_meta['table'],
+                install_bootloader=disk_meta['has_bootloader']
             )
 
             LOG.debug('Scanning all partitions on disk %s '
-                      % disk_info['generic']['dev'])
+                      % disk_meta['dev'])
 
             for part in disk_info['parts']:
-                if part.get('fstype', '') == 'free':
+                if part['fstype'] == 'free':
                     LOG.debug('Skipping a free partition at:'
                               'begin=%s, end=%s' %
-                              (part.get('begin'), part.get('end')))
+                              (part['begin'], part['end']))
                     continue
 
                 LOG.debug('Adding partition: '
                           'name=%s size=%s to hw schema' %
-                          (part.get('disk_dev'), part.get('size')))
+                          (part['master_dev'], part['size']))
 
                 # NOTE(lobur): avoid use of parted.add_partition to omit
                 # counting logic; use real data instead.
                 partition = objects.Partition(
                     name=part.get('name'),
                     count=part.get('num'),
-                    device=part.get('disk_dev'),
+                    device=part.get('master_dev'),
                     begin=part.get('begin'),
                     end=part.get('end'),
                     partition_type=part.get('type'),
@@ -727,7 +729,12 @@ def _resolve_sizes(spaces, retain_space_size=True):
     return spaces
 
 
-def convert_string_sizes(data):
+def convert_string_sizes(data, target=None):
+    if target is not None:
+        conv_args = {'target': target}
+    else:
+        conv_args = {}
+
     if isinstance(data, (list, tuple)):
         return [convert_string_sizes(el) for el in data]
     if isinstance(data, dict):
@@ -736,7 +743,7 @@ def convert_string_sizes(data):
                     any(x in v for x in ('%', 'remaining'))):
                 continue
             if k in ('size', 'lvm_meta_size'):
-                data[k] = utils.human2bytes(v)
+                data[k] = utils.human2bytes(v, **conv_args)
             else:
                 data[k] = convert_string_sizes(v)
     return data

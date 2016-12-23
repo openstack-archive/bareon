@@ -20,6 +20,7 @@ import os
 import re
 import string
 
+from bareon import errors
 from bareon.utils import utils
 
 LOG = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ class Disk(BlockDevicePayload):
             disk_args['sector_max'] = disk_info.sector_max
         elif disk_info.table_format == 'mbr':
             disk_args['sector_min'] = 64
-        disk = cls(disk_block, **disk_args)
+        disk = cls(disk_block, disk_info.table_format, **disk_args)
 
         for listing_info in disk_info.partitions:
             output = utils.execute(
@@ -93,10 +94,11 @@ class Disk(BlockDevicePayload):
 
         return disk
 
-    def __init__(self, block, sector_min=0, sector_max=None, alignment=1,
-                 **kwargs):
+    def __init__(self, block, partition_table_format, sector_min=0,
+                 sector_max=None, alignment=1, **kwargs):
         super(Disk, self).__init__(block, **kwargs)
-        self.alignment = alignment
+        self.partition_table_format = partition_table_format
+        self.alignment = alignment  # don't use now
 
         self._space = [_DiskSpaceDescriptor(0, self.block.size)]
 
@@ -108,9 +110,21 @@ class Disk(BlockDevicePayload):
     @property
     def partitions(self):
         for segment in self._space:
-            if segment.payload is None:
+            if segment.is_free():
+                continue
+            elif segment.kind == segment.KIND_RESERVED:
                 continue
             yield segment.payload
+
+    @property
+    def segments(self):
+        for segment in self._space:
+            if segment.kind == segment.KIND_RESERVED:
+                continue
+            if segment.is_free():
+                yield EmptySpace(self, segment.begin, segment.end)
+            else:
+                yield segment.payload
 
     def register(self, partition):
         allocation = self._allocate(
@@ -189,6 +203,14 @@ class Partition(BlockDevicePayload):
         if self.disk.dev[-1] in string.digits:
             return 'p' + name
         return name
+
+
+class EmptySpace(object):
+    def __init__(self, disk, begin, end):
+        self.disk = disk
+        self.begin = begin
+        self.end = end
+        self.size = (self.end - self.begin) + 1
 
 
 class _BlockDevice(object):
@@ -282,7 +304,7 @@ class _DiskSpaceDescriptor(object):
         return self._anchor != other._anchor
 
     def is_free(self):
-        return self.kind not in (self.KIND_RESERVED, self.KIND_BUSY)
+        return self.kind in (self.KIND_FREE, self.KIND_ALIGN)
 
     def is_null(self):
         return self.end + 1 == self.begin
@@ -359,8 +381,8 @@ class _GDiskMessage(object):
         if missing_fields:
             missing_fields = sorted(missing_fields)
             missing_fields = '", "'.join(missing_fields)
-            raise ValueError(
-                'Some mandatory fields are missing: "{}"'.format(
+            raise errors.BlockDeviceSchemeError(
+                'Required fields are missing: "{}"'.format(
                     missing_fields),
                 self._raw)
 
@@ -384,7 +406,7 @@ class _GDiskMessage(object):
                 e, value = invalid_fields[field]
                 message.append('{}{}({}): {}'.format(indent, field, value, e))
             message = '\n'.join(message)
-            raise ValueError(
+            raise errors.BlockDeviceSchemeError(
                 'Unable to convert parsed fields:\n{}'.format(message))
 
         return payload_fields
@@ -395,8 +417,9 @@ class _GDiskMessage(object):
         if self._is_boundary(data[0]):
             data.pop(0)
             return
-        raise ValueError('Invalid sfdisk output - missing expected '
-                         'boundary("\n\n")', self._raw)
+        raise errors.BlockDeviceSchemeError(
+            'Invalid sfdisk output - missing expected boundary("\n\n")',
+            self._raw)
 
     @staticmethod
     def _is_boundary(line):
@@ -479,14 +502,15 @@ class _GDiskPrint(_GDiskMessage):
             if match is None:
                 raise ValueError
         except (IndexError, ValueError):
-            raise ValueError('Invalid partitions table header', self._raw)
+            raise errors.BlockDeviceSchemeError(
+                'Invalid partitions table header', self._raw)
 
         partitions = []
         while self._extra:
             try:
                 record = _GDiskPrintPartitionRecord(self._extra.pop(0))
-            except ValueError as e:
-                raise ValueError(e.message, self._raw)
+            except errors.BlockDeviceSchemeError as e:
+                raise errors.BlockDeviceSchemeError(e.message, self._raw)
             partitions.append(record)
 
         return partitions
@@ -559,6 +583,6 @@ class _GDiskPrintPartitionRecord(object):
                 message.append('{}{}({}): {}'.format(
                     indent, field, value, e))
             message = '\n'.join(message)
-            raise ValueError(
+            raise errors.BlockDeviceSchemeError(
                 'Invalid partition table record\n"""{}"""\n{}'.format(
                     line, message))

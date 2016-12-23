@@ -1,0 +1,14 @@
+
+***************************************************************
+Found invalid GPT and valid MBR; converting MBR to GPT format
+in memory.
+***************************************************************
+
+Partition GUID code: 0657FD6D-A4AB-43C4-84E5-0933C84B4F4F (Linux swap)
+Partition unique GUID: 04003F45-3426-47EA-BAA0-0220F2CC6B6C
+First sector: 100001792 (at 47.7 GiB)
+Last sector: 120000511 (at 57.2 GiB)
+Partition size: 19998720 sectors (9.5 GiB)
+Attribute flags: 0000000000000000
+Partition name: 'Linux swap'
+

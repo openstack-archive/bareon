@@ -1,0 +1,13 @@
+
+***************************************************************
+Found invalid GPT and valid MBR; converting MBR to GPT format
+in memory.
+***************************************************************
+
+Partition GUID code: 0FC63DAF-8483-4772-8E79-3D69D8477DE4 (Linux filesystem)
+Partition unique GUID: 28404402-736E-46D3-B623-F6F2868079B8
+First sector: 1936748544 (at 923.5 GiB)
+Last sector: 1953523711 (at 931.5 GiB)
+Partition size: 16775168 sectors (8.0 GiB)
+Attribute flags: 0000000000000000
+Partition name: 'Linux filesystem'
