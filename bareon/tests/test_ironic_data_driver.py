@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from collections import namedtuple
 
 import mock
@@ -21,6 +22,8 @@ from bareon.drivers.data import ironic
 from bareon import errors
 from bareon.utils import hardware as hu
 from bareon.utils import utils
+
+MiB = 2 ** 20
 
 
 class IronicTestAbstract(unittest2.TestCase):
@@ -471,14 +474,16 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_no_percent(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
-             'type': 'disk', 'volumes': [{'size': 5000, 'type': 'partition'},
-                                         {'size': 4900,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
+             'type': 'disk', 'volumes': [{'size': 5000 * MiB,
+                                          'type': 'partition'},
+                                         {'size': 4900 * MiB,
                                           'type': 'partition'}]}]
         desired = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
-             'type': 'disk', 'volumes': [{'size': 5000, 'type': 'partition'},
-                                         {'size': 4900,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
+             'type': 'disk', 'volumes': [{'size': 5000 * MiB,
+                                          'type': 'partition'},
+                                         {'size': 4900 * MiB,
                                           'type': 'partition'}]}]
         result = ironic._resolve_all_sizes(start_data)
 
@@ -486,14 +491,15 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_percent(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk', 'volumes': [{'size': '50%', 'type': 'partition'},
-                                         {'size': 4900,
+                                         {'size': 4900 * MiB,
                                           'type': 'partition'}]}]
         desired = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
-             'type': 'disk', 'volumes': [{'size': 5000, 'type': 'partition'},
-                                         {'size': 4900,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
+             'type': 'disk', 'volumes': [{'size': 5000 * MiB,
+                                          'type': 'partition'},
+                                         {'size': 4900 * MiB,
                                           'type': 'partition'}]}]
         result = ironic._resolve_all_sizes(start_data)
 
@@ -501,14 +507,15 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_percent_unicode(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk', 'volumes': [{'size': u'50%', 'type': 'partition'},
-                                         {'size': 4900,
+                                         {'size': 4900 * MiB,
                                           'type': 'partition'}]}]
         desired = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
-             'type': 'disk', 'volumes': [{'size': 5000, 'type': 'partition'},
-                                         {'size': 4900,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
+             'type': 'disk', 'volumes': [{'size': 5000 * MiB,
+                                          'type': 'partition'},
+                                         {'size': 4900 * MiB,
                                           'type': 'partition'}]}]
         result = ironic._resolve_all_sizes(start_data)
 
@@ -518,23 +525,23 @@ class TestConvertPercentSizes(unittest2.TestCase):
         start_data = [
             {'id': {'type': 'name', 'value': 'vda'},
              'type': 'disk', 'volumes': [{'size': '50%', 'type': 'partition'},
-                                         {'size': 4900,
+                                         {'size': 4900 * MiB,
                                           'type': 'partition'}]}]
 
         self.assertRaises(ValueError, ironic._resolve_all_sizes, start_data)
 
     def test_single_disk_insufficient_size(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk', 'volumes': [{'size': '50%', 'type': 'partition'},
-                                         {'size': 6000,
+                                         {'size': 6000 * MiB,
                                           'type': 'partition'}]}]
 
         self.assertRaises(ValueError, ironic._resolve_all_sizes, start_data)
 
     def test_single_disk_with_vg(self):
         start_data = [{'id': {'type': 'name', 'value': 'vda'},
-                       'size': 10000,
+                       'size': 10000 * MiB,
                        'type': 'disk',
                        'volumes': [{'size': '50%', 'type': 'partition'},
                                    {'size': '49%', 'type': 'pv',
@@ -548,17 +555,17 @@ class TestConvertPercentSizes(unittest2.TestCase):
                                     'type': 'lv'}]}]
 
         desired = [{'id': {'type': 'name', 'value': 'vda'},
-                    'size': 10000,
+                    'size': 10000 * MiB,
                     'type': 'disk',
-                    'volumes': [{'size': 5000, 'type': 'partition'},
-                                {'size': 4900, 'type': 'pv',
+                    'volumes': [{'size': 5000 * MiB, 'type': 'partition'},
+                                {'size': 4900 * MiB, 'type': 'pv',
                                  'vg': 'home'}]},
                    {'id': 'home',
                     'type': 'vg',
                     'volumes': [{'file_system': 'ext3',
                                  'mount': '/home',
                                  'name': 'home',
-                                 'size': 4900 - self.LVM,
+                                 'size': 4900 * MiB - self.LVM,
                                  'type': 'lv'}]}]
         result = ironic._resolve_all_sizes(start_data)
 
@@ -566,7 +573,7 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_with_vg_insufficient_size(self):
         start_data = [{'id': {'type': 'name', 'value': 'vda'},
-                       'size': 10000,
+                       'size': 10000 * MiB,
                        'type': 'disk',
                        'volumes': [{'size': '50%', 'type': 'partition'},
                                    {'size': '49%', 'type': 'pv',
@@ -588,7 +595,7 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_with_vg_size_more_than_100_percent(self):
         start_data = [{'id': {'type': 'name', 'value': 'vda'},
-                       'size': 10000,
+                       'size': 10000 * MiB,
                        'type': 'disk',
                        'volumes': [{'size': '50%', 'type': 'partition'},
                                    {'size': '49%', 'type': 'pv',
@@ -605,12 +612,12 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_with_vg_lvm_meta_size(self):
         start_data = [{'id': {'type': 'name', 'value': 'vda'},
-                       'size': 10000,
+                       'size': 10000 * MiB,
                        'type': 'disk',
                        'volumes': [{'size': '50%', 'type': 'partition'},
                                    {'size': '49%', 'type': 'pv',
                                     'vg': 'home',
-                                    'lvm_meta_size': 49}]},
+                                    'lvm_meta_size': 49 * MiB}]},
                       {'id': 'home',
                        'type': 'vg',
                        'volumes': [{'file_system': 'ext3',
@@ -620,34 +627,35 @@ class TestConvertPercentSizes(unittest2.TestCase):
                                     'type': 'lv'}]}]
 
         desired = [{'id': {'type': 'name', 'value': 'vda'},
-                    'size': 10000,
+                    'size': 10000 * MiB,
                     'type': 'disk',
-                    'volumes': [{'size': 5000, 'type': 'partition'},
-                                {'size': 4900, 'type': 'pv',
+                    'volumes': [{'size': 5000 * MiB, 'type': 'partition'},
+                                {'size': 4900 * MiB, 'type': 'pv',
                                  'vg': 'home',
-                                 'lvm_meta_size': 49}]},
+                                 'lvm_meta_size': 49 * MiB}]},
                    {'id': 'home',
                     'type': 'vg',
                     'volumes': [{'file_system': 'ext3',
                                  'mount': '/home',
                                  'name': 'home',
-                                 'size': 4900 - 49,
+                                 'size': 4900 * MiB - 49 * MiB,
                                  'type': 'lv'}]}]
         result = ironic._resolve_all_sizes(start_data)
         map(lambda r, d: self.assertDictEqual(r, d), result, desired)
 
     def test_single_disk_remaining(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk',
              'volumes': [{'size': '50%', 'type': 'partition', 'mount': '/'},
                          {'size': 'remaining', 'type': 'partition',
                           'mount': '/home'}]}]
         desired = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk',
-             'volumes': [{'size': 5000, 'type': 'partition', 'mount': '/'},
-                         {'size': 5000 - self.GRUB, 'type': 'partition',
+             'volumes': [{'size': 5000 * MiB, 'type': 'partition',
+                          'mount': '/'},
+                         {'size': 5000 * MiB - self.GRUB, 'type': 'partition',
                           'mount': '/home'}]}]
         result = ironic._resolve_all_sizes(start_data)
 
@@ -655,9 +663,9 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_remaining_nothing_left(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk',
-             'volumes': [{'size': 10000 - self.GRUB, 'type': 'partition',
+             'volumes': [{'size': 10000 * MiB - self.GRUB, 'type': 'partition',
                           'mount': '/'},
                          {'size': 'remaining', 'type': 'partition',
                           'mount': '/home'}]}]
@@ -665,17 +673,17 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_remaining_insufficient_size(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk',
              'volumes': [{'size': 'remaining', 'type': 'partition',
                           'mount': '/'},
-                         {'size': 11000, 'type': 'partition',
+                         {'size': 11000 * MiB, 'type': 'partition',
                           'mount': '/home'}]}]
         self.assertRaises(ValueError, ironic._resolve_all_sizes, start_data)
 
     def test_single_disk_with_lv_remaining(self):
         start_data = [{'id': {'type': 'name', 'value': 'vda'},
-                       'size': 10000,
+                       'size': 10000 * MiB,
                        'type': 'disk',
                        'volumes': [{'mount': '/',
                                     'size': '50%',
@@ -693,28 +701,28 @@ class TestConvertPercentSizes(unittest2.TestCase):
                                     'type': 'lv'}]}]
 
         desired = [{'id': {'type': 'name', 'value': 'vda'},
-                    'size': 10000,
+                    'size': 10000 * MiB,
                     'type': 'disk',
                     'volumes': [{'mount': '/',
-                                 'size': 5000,
+                                 'size': 5000 * MiB,
                                  'type': 'partition'},
-                                {'size': 4900,
+                                {'size': 4900 * MiB,
                                  'type': 'pv',
                                  'vg': 'home'}]},
                    {'id': 'home',
                     'type': 'vg',
                     'volumes': [{'mount': '/var',
-                                 'size': 4836 - (int(0.3 * 4836)),
+                                 'size': 4836 * MiB - (int(0.3 * 4836 * MiB)),
                                  'type': 'lv'},
                                 {'mount': '/home',
-                                 'size': int(0.3 * 4836),
+                                 'size': int(0.3 * 4836 * MiB),
                                  'type': 'lv'}]}]
 
         result = ironic._resolve_all_sizes(start_data)
         map(lambda r, d: self.assertDictEqual(r, d), result, desired)
 
     def test_single_disk_with_pv_and_lv_remaining(self):
-        disk_size = 10000
+        disk_size = 10000 * MiB
         start_data = [{'id': {'type': 'name', 'value': 'vda'},
                        'size': disk_size,
                        'type': 'disk',
@@ -763,7 +771,7 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_multiple_remaining(self):
         start_data = [
-            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000,
+            {'id': {'type': 'name', 'value': 'vda'}, 'size': 10000 * MiB,
              'type': 'disk',
              'volumes': [{'size': 'remaining', 'type': 'partition',
                           'mount': '/'},
@@ -780,24 +788,24 @@ class TestConvertPercentSizes(unittest2.TestCase):
                                     'size': "100%",
                                     'type': 'lv'}]},
                       {'id': {'type': 'name', 'value': 'vda'},
-                       'size': 10000,
+                       'size': 10000 * MiB,
                        'type': 'disk',
                        'volumes': [{'size': '50%', 'type': 'partition'},
                                    {'size': '49%', 'type': 'pv',
                                     'vg': 'home'}]}]
 
         desired = [{'id': {'type': 'name', 'value': 'vda'},
-                    'size': 10000,
+                    'size': 10000 * MiB,
                     'type': 'disk',
-                    'volumes': [{'size': 5000, 'type': 'partition'},
-                                {'size': 4900, 'type': 'pv',
+                    'volumes': [{'size': 5000 * MiB, 'type': 'partition'},
+                                {'size': 4900 * MiB, 'type': 'pv',
                                  'vg': 'home'}]},
                    {'id': 'home',
                     'type': 'vg',
                     'volumes': [{'file_system': 'ext3',
                                  'mount': '/home',
                                  'name': 'home',
-                                 'size': 4900 - self.LVM,
+                                 'size': 4900 * MiB - self.LVM,
                                  'type': 'lv'}]}]
 
         result = ironic._resolve_all_sizes(start_data)
@@ -806,15 +814,15 @@ class TestConvertPercentSizes(unittest2.TestCase):
 
     def test_single_disk_with_vg_multiple_pv(self):
         start_data = [{'id': {'type': 'name', 'value': 'vda'},
-                       'size': 10000,
+                       'size': 10000 * MiB,
                        'type': 'disk',
                        'volumes': [
-                           {'size': 7000, 'type': 'pv', 'vg': 'home'}]},
+                           {'size': 7000 * MiB, 'type': 'pv', 'vg': 'home'}]},
                       {'id': {'type': 'name', 'value': 'vdb'},
-                       'size': 5000,
+                       'size': 5000 * MiB,
                        'type': 'disk',
                        'volumes': [
-                           {'size': 4000, 'type': 'pv', 'vg': 'home'}]},
+                           {'size': 4000 * MiB, 'type': 'pv', 'vg': 'home'}]},
                       {'id': 'home',
                        'type': 'vg',
                        'volumes': [{'file_system': 'ext3',
@@ -824,19 +832,21 @@ class TestConvertPercentSizes(unittest2.TestCase):
                                     'type': 'lv'}]}]
 
         desired = [{'id': {'type': 'name', 'value': 'vda'},
-                    'size': 10000,
+                    'size': 10000 * MiB,
                     'type': 'disk',
-                    'volumes': [{'size': 7000, 'type': 'pv', 'vg': 'home'}]},
+                    'volumes': [{'size': 7000 * MiB, 'type': 'pv',
+                                 'vg': 'home'}]},
                    {'id': {'type': 'name', 'value': 'vdb'},
-                    'size': 5000,
+                    'size': 5000 * MiB,
                     'type': 'disk',
-                    'volumes': [{'size': 4000, 'type': 'pv', 'vg': 'home'}]},
+                    'volumes': [{'size': 4000 * MiB, 'type': 'pv',
+                                 'vg': 'home'}]},
                    {'id': 'home',
                     'type': 'vg',
                     'volumes': [{'file_system': 'ext3',
                                  'mount': '/home',
                                  'name': 'home',
-                                 'size': 5500 - self.LVM,
+                                 'size': 5500 * MiB - self.LVM,
                                  'type': 'lv'}]}]
 
         result = ironic._resolve_all_sizes(start_data)

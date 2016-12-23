@@ -22,6 +22,7 @@ from bareon.actions import partitioning
 from bareon.drivers.data import nailgun
 from bareon import objects
 from bareon.tests import test_nailgun
+from bareon.utils import utils
 
 if six.PY2:
     import mock
@@ -98,6 +99,7 @@ class TestPartitioningAction(unittest2.TestCase):
     @mock.patch.object(partitioning, 'pu', autospec=True)
     def test_do_partitioning(self, mock_pu, mock_fu, mock_lu, mock_mu,
                              mock_utils, mock_os, mock_hu):
+        mock_utils.B2MiB.side_effect = utils.B2MiB
         mock_os.path.exists.return_value = True
         self.action.execute()
         mock_utils.unblacklist_udev_rules.assert_called_once_with(
@@ -114,21 +116,21 @@ class TestPartitioningAction(unittest2.TestCase):
                          mock_pu.make_label.call_args_list)
 
         mock_pu_mp_expected_calls = [
-            mock.call('/dev/sda', 1, 25, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 26, 226, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 227, 427, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 428, 628, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 629, 20067, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 20068, 65665, 'primary',
+            mock.call('/dev/sda', 1, 24, 'primary', alignment='optimal'),
+            mock.call('/dev/sda', 25, 224, 'primary', alignment='optimal'),
+            mock.call('/dev/sda', 225, 424, 'primary', alignment='optimal'),
+            mock.call('/dev/sda', 425, 624, 'primary', alignment='optimal'),
+            mock.call('/dev/sda', 625, 20062, 'primary', alignment='optimal'),
+            mock.call('/dev/sda', 20063, 65659, 'primary',
                       alignment='optimal'),
-            mock.call('/dev/sda', 65666, 65686, 'primary',
+            mock.call('/dev/sda', 65660, 65679, 'primary',
                       alignment='optimal'),
-            mock.call('/dev/sdb', 1, 25, 'primary', alignment='optimal'),
-            mock.call('/dev/sdb', 26, 226, 'primary', alignment='optimal'),
-            mock.call('/dev/sdb', 227, 65198, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 1, 25, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 26, 226, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 227, 65198, 'primary', alignment='optimal')]
+            mock.call('/dev/sdb', 1, 24, 'primary', alignment='optimal'),
+            mock.call('/dev/sdb', 25, 224, 'primary', alignment='optimal'),
+            mock.call('/dev/sdb', 225, 65195, 'primary', alignment='optimal'),
+            mock.call('/dev/sdc', 1, 24, 'primary', alignment='optimal'),
+            mock.call('/dev/sdc', 25, 224, 'primary', alignment='optimal'),
+            mock.call('/dev/sdc', 225, 65195, 'primary', alignment='optimal')]
         self.assertEqual(mock_pu_mp_expected_calls,
                          mock_pu.make_partition.call_args_list)
 
@@ -156,9 +158,9 @@ class TestPartitioningAction(unittest2.TestCase):
         self.assertEqual(mock_lu_v_expected_calls,
                          mock_lu.vgcreate.call_args_list)
 
-        mock_lu_l_expected_calls = [mock.call('os', 'root', 15360),
-                                    mock.call('os', 'swap', 4014),
-                                    mock.call('image', 'glance', 175347)]
+        mock_lu_l_expected_calls = [mock.call('os', 'root', 1),
+                                    mock.call('os', 'swap', 1),
+                                    mock.call('image', 'glance', 1)]
         self.assertEqual(mock_lu_l_expected_calls,
                          mock_lu.lvcreate.call_args_list)
 
@@ -251,19 +253,19 @@ class TestManagerMultipathPartition(unittest2.TestCase):
             mock.call('/dev/sdc', 'gpt')])
 
         self.assertEqual(mock_pu.make_partition.mock_calls, [
-            mock.call('/dev/mapper/12312', 1, 25, 'primary',
+            mock.call('/dev/mapper/12312', 1, 24, 'primary',
                       alignment='optimal'),
-            mock.call('/dev/mapper/12312', 26, 226, 'primary',
+            mock.call('/dev/mapper/12312', 25, 224, 'primary',
                       alignment='optimal'),
-            mock.call('/dev/mapper/12312', 227, 427, 'primary',
+            mock.call('/dev/mapper/12312', 225, 424, 'primary',
                       alignment='optimal'),
-            mock.call('/dev/mapper/12312', 428, 628, 'primary',
+            mock.call('/dev/mapper/12312', 425, 624, 'primary',
                       alignment='optimal'),
-            mock.call('/dev/mapper/12312', 629, 649, 'primary',
+            mock.call('/dev/mapper/12312', 625, 644, 'primary',
                       alignment='optimal'),
-            mock.call('/dev/sdc', 1, 25, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 26, 226, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 227, 427, 'primary', alignment='optimal')])
+            mock.call('/dev/sdc', 1, 24, 'primary', alignment='optimal'),
+            mock.call('/dev/sdc', 25, 224, 'primary', alignment='optimal'),
+            mock.call('/dev/sdc', 225, 424, 'primary', alignment='optimal')])
 
         self.assertEqual(mock_pu.set_partition_flag.mock_calls, [
             mock.call('/dev/mapper/12312', 1, 'bios_grub'),

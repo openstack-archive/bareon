@@ -46,7 +46,7 @@ class Parted(base.Serializable):
         # raise KeyError
         # (kwargs.pop['size'] will raise error if size is not set)
         kwargs['end'] = kwargs.get('end') or \
-            kwargs['begin'] + kwargs.pop('size')
+            kwargs['begin'] + kwargs.pop('size') - 1
         # if partition_type is given use its value else
         # try to calculate it automatically
         kwargs['partition_type'] = \

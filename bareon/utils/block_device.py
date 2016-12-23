@@ -98,7 +98,7 @@ class Disk(BlockDevicePayload):
                  sector_max=None, alignment=1, **kwargs):
         super(Disk, self).__init__(block, **kwargs)
         self.partition_table_format = partition_table_format
-        self.alignment = alignment  # don't use now
+        self.alignment = alignment
 
         self._space = [_DiskSpaceDescriptor(0, self.block.size)]
 
@@ -106,6 +106,8 @@ class Disk(BlockDevicePayload):
             self._mark_reserved(0, max(sector_min - 1, 0))
         if sector_max is not None:
             self._mark_reserved(sector_max + 1, self.block.size)
+
+        self._align_free_blocks()
 
     @property
     def partitions(self):
@@ -126,15 +128,47 @@ class Disk(BlockDevicePayload):
             else:
                 yield segment.payload
 
+    def allocate(self, size_bytes):
+        size = size_bytes // self.block_size
+        size += int(size_bytes != size * self.block_size)
+
+        for idx, segment in enumerate(self._space):
+            if not segment.is_free():
+                continue
+            if segment.kind == segment.KIND_ALIGN:
+                continue
+            if segment.size < size:
+                continue
+
+            replace, tail = segment.split(segment.begin + size)
+
+            block = _BlockDevice(
+                None, replace.size, self.block_size, self.physical_block_size)
+            partition = Partition(self, block, replace.begin, None, None)
+            allocation = _DiskSpaceDescriptor(
+                replace.begin, replace.end, _DiskSpaceDescriptor.KIND_BUSY,
+                payload=partition)
+
+            self._space[idx:idx + 1] = [
+                x for x in (allocation, tail) if not x.is_null()]
+            break
+        else:
+            raise errors.BlockDeviceSchemeError(
+                'Unable to allocate {} sectors on {}'.format(size, self.dev))
+
+        self._align_free_blocks()
+
+        return partition
+
     def register(self, partition):
-        allocation = self._allocate(
+        allocation = self._reserve(
             partition.begin, partition.end, _DiskSpaceDescriptor.KIND_BUSY)
         allocation.payload = partition
 
     def _mark_reserved(self, begin, end):
-        self._allocate(begin, end, _DiskSpaceDescriptor.KIND_RESERVED)
+        self._reserve(begin, end, _DiskSpaceDescriptor.KIND_RESERVED)
 
-    def _allocate(self, begin, end, kind):
+    def _reserve(self, begin, end, kind):
         intersect = []
 
         lookup = [begin, end]
@@ -179,6 +213,29 @@ class Disk(BlockDevicePayload):
         self._space[slice_start:slice_end] = replace
 
         return allocation
+
+    def _align_free_blocks(self):
+        if self.alignment < 2:
+            return
+
+        replace_batch = []
+        for idx, segment in enumerate(self._space):
+            if segment.kind != segment.KIND_FREE:
+                continue
+
+            offset = self.alignment - segment.begin % self.alignment
+            if not offset:
+                continue
+
+            align, free = segment.split(segment.begin + offset)
+            replace = [
+                _DiskSpaceDescriptor(align.begin, align.end, align.KIND_ALIGN),
+                free]
+            replace_batch.append((idx, replace))
+
+        replace_batch.reverse()
+        for idx, replace in replace_batch:
+            self._space[idx:idx + 1] = [x for x in replace if not x.is_null()]
 
 
 class Partition(BlockDevicePayload):
@@ -280,6 +337,7 @@ class _DiskSpaceDescriptor(object):
     def __init__(self, begin, end, kind=KIND_FREE, payload=None):
         self.begin = begin
         self.end = end
+        self.size = end - begin + 1
         self.kind = kind
         self.payload = payload
 

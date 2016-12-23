@@ -116,6 +116,8 @@ class PartitioningAction(base.BaseAction):
                     pu.set_gpt_type(prt.device, prt.count, prt.guid)
                 # If any partition to be created doesn't exist it's an error.
                 # Probably it's again 'device or resource busy' issue.
+                # FIXME(dbogun): prt.name is not reliable! And this is
+                # incorrect place to check is partition created.
                 if not os.path.exists(prt.name):
                     raise errors.PartitionNotFoundError(
                         'Partition %s not found after creation' % prt.name)
@@ -138,15 +140,18 @@ class PartitioningAction(base.BaseAction):
                 # interactive dialog if some data (metadata or file system)
                 # present on this new partition and it also allows udev not
                 # hanging trying to parse this data.
+                begin = utils.B2MiB(prt.begin)
+                end = utils.B2MiB(prt.end + 1)
+
                 utils.execute('dd', 'if=/dev/zero', 'bs=1M',
-                              'seek=%s' % max(prt.begin - 3, 0), 'count=5',
+                              'seek=%s' % max(begin - 3, 0), 'count=5',
                               'of=%s' % prt.device, check_exit_code=[0])
                 # Also wipe out the ending of every new partition.
                 # Different versions of md stores metadata in different places.
                 # Adding exit code 1 to be accepted as for handling situation
                 # when 'no space left on device' occurs.
                 utils.execute('dd', 'if=/dev/zero', 'bs=1M',
-                              'seek=%s' % max(prt.end - 3, 0), 'count=5',
+                              'seek=%s' % max(end - 3, 0), 'count=5',
                               'of=%s' % prt.device, check_exit_code=[0, 1])
 
         parteds = []
@@ -197,7 +202,7 @@ class PartitioningAction(base.BaseAction):
 
         # creating logical volumes
         for lv in self.driver.partition_scheme.lvs:
-            lu.lvcreate(lv.vgname, lv.name, lv.size)
+            lu.lvcreate(lv.vgname, lv.name, utils.B2MiB(lv.size))
 
         # making file systems
         for fs in self.driver.partition_scheme.fss:

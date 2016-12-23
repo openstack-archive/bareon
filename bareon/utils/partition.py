@@ -46,7 +46,7 @@ def scan_device(dev):
         info = {
             'master_dev': disk.dev,
             'begin': segment.begin * disk.block_size,
-            'end': segment.end * disk.block_size,
+            'end': segment.end * disk.block_size + disk.block_size - 1,
             'size': segment.size * disk.block_size
         }
         if isinstance(segment, block_device.EmptySpace):
@@ -199,20 +199,14 @@ def make_partition(dev, begin, end, ptype, alignment='optimal'):
         raise errors.WrongPartitionSchemeError(
             'Wrong boundaries: begin >= end')
 
-    # check if begin and end are inside one of free spaces available
-    disk = scan_device(dev)
-    partitions = disk['parts']
-    if not any(x['fstype'] == 'free' and begin >= x['begin'] and
-               end <= x['end'] for x in partitions):
-        raise errors.WrongPartitionSchemeError(
-            'Invalid boundaries: begin and end '
-            'are not inside available free space')
+    disk = block_device.Disk.new_by_device_scan(dev)
+    partition = disk.allocate(end - begin + 1)
 
     utils.udevadm_settle()
     out, err = utils.execute(
-        'parted', '-a', alignment, '-s', dev, 'unit', 'MiB',
-        'mkpart', ptype, str(begin), str(end), check_exit_code=[0, 1])
-    LOG.debug('Parted output: \n%s' % out)
+        'parted', '-a', alignment, '-s', dev, 'unit', 's',
+        'mkpart', ptype, str(partition.begin), str(partition.end))
+    LOG.debug('Parted output: \n%s', out)
     reread_partitions(dev, out=out)
 
 

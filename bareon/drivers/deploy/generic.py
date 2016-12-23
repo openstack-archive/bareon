@@ -322,19 +322,22 @@ class PolicyPartitioner(object):
             if not disks:
                 raise errors.DiskNotFoundError(
                     'No physical disks found matching: %s' % parted.name)
-            disk_size_bytes = disks[0].get('bspec', {}).get('size64')
-            if not disk_size_bytes:
+
+            try:
+                disk_size_bytes = disks[0]['bspec']['size64']
+                disk_size_bytes = int(disk_size_bytes)
+            except (KeyError, IndexError, ValueError):
                 raise ValueError('Cannot read size of the disk: %s'
                                  % disks[0].get('name'))
+
             # It's safer to understate the physical disk size
-            disk_size_mib = utils.B2MiB(disk_size_bytes, ceil=False)
-            if parted.disk_size > disk_size_mib:
+            if parted.size > disk_size_bytes:
                 raise errors.NotEnoughSpaceError(
                     'Partition scheme for: %(disk)s exceeds the size of the '
-                    'disk. Scheme size is %(scheme_size)s MiB, and disk size '
-                    'is %(disk_size)s MiB.' % {
+                    'disk. Scheme size is %(scheme_size)s, and disk size '
+                    'is %(disk_size)s.' % {
                         'disk': parted.name, 'scheme_size': parted.disk_size,
-                        'disk_size': disk_size_mib})
+                        'disk_size': disk_size_bytes})
 
     def _handle_clean(self):
         self._verify_disk_size(self.driver.partition_scheme.parteds,
@@ -374,19 +377,10 @@ class PartitionSchemaCompareTool(object):
             for part in parted['partitions']:
                 part['keep_data'] = False
 
-        self._drop_schema_size(user_schema)
+        self._begin_end_into_size(user_schema)
 
         LOG.debug('Prepared user_schema is:\n%s' % user_schema)
         return user_schema
-
-    @staticmethod
-    def _drop_schema_size(schema):
-        # If it exists, drop the schema size attribute. This should
-        # be valid because doing a full layout comparison implicitly
-        # involves verification of the disk sizes, and we don't need
-        # to check those separately.
-        for parted in schema['parteds']:
-            parted.pop('size', None)
 
     def _prepare_hw_schema(self, user_schema, hw_schema):
         LOG.debug('Preparing hw_schema to verification:\n%s' %
@@ -420,7 +414,7 @@ class PartitionSchemaCompareTool(object):
             fs['fs_type'] = self._transform_fs_type(fs['fs_type'])
             fs['os_id'] = []
 
-        self._drop_schema_size(hw_schema)
+        self._begin_end_into_size(hw_schema)
 
         LOG.debug('Prepared hw_schema is:\n%s' % hw_schema)
         return hw_schema
@@ -439,3 +433,17 @@ class PartitionSchemaCompareTool(object):
                 return usr_schema_val
 
         return hw_fs_type
+
+    @staticmethod
+    def _begin_end_into_size(schema):
+        # We can't rely on ("begin", "end") fields created from user request.
+        # Because they don't take in account reserved zones added by partition
+        # schema.
+        # Order plus size plus type should be strict enough for our check.
+        for disk in schema['parteds']:
+            disk.pop('size', None)
+            for p in disk['partitions']:
+                if 'size' not in p:
+                    p['size'] = p['end'] - p['begin']
+                del p['begin']
+                del p['end']

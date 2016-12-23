@@ -33,8 +33,9 @@ LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 
-DEFAULT_LVM_META_SIZE = 64
-DEFAULT_GRUB_SIZE = 24
+MiB = 2 ** 20
+DEFAULT_LVM_META_SIZE = 64 * MiB
+DEFAULT_GRUB_SIZE = 24 * MiB
 
 
 class Ironic(GenericDataDriver):
@@ -148,7 +149,7 @@ class Ironic(GenericDataDriver):
 
             if self.is_multiboot and not multiboot_installed:
                 multiboot_installed = True
-                multiboot_partition = parted.add_partition(size=100)
+                multiboot_partition = parted.add_partition(size=100 * MiB)
                 partition_schema.add_fs(device=multiboot_partition.name,
                                         mount='multiboot', fs_type='ext4',
                                         fstab_enabled=False, os_id=[])
@@ -212,6 +213,7 @@ class Ironic(GenericDataDriver):
         LOG.debug('Creating pv on partition: pv=%s vg=%s' %
                   (partition.name, volume['vg']))
         lvm_meta_size = volume.get('lvm_meta_size', DEFAULT_LVM_META_SIZE)
+        lvm_meta_size = utils.B2MiB(lvm_meta_size)
         # The reason for that is to make sure that
         # there will be enough space for creating logical volumes.
         # Default lvm extension size is 4M. Nailgun volume
@@ -616,7 +618,7 @@ class Ironic(GenericDataDriver):
 
 
 def convert_size(data):
-    data = convert_string_sizes(data)
+    data = convert_string_sizes(data, target='B')
     data = _resolve_all_sizes(data)
     return data
 
@@ -736,7 +738,7 @@ def convert_string_sizes(data, target=None):
         conv_args = {}
 
     if isinstance(data, (list, tuple)):
-        return [convert_string_sizes(el) for el in data]
+        return [convert_string_sizes(el, target=target) for el in data]
     if isinstance(data, dict):
         for k, v in data.items():
             if (isinstance(v, basestring) and
@@ -745,5 +747,5 @@ def convert_string_sizes(data, target=None):
             if k in ('size', 'lvm_meta_size'):
                 data[k] = utils.human2bytes(v, **conv_args)
             else:
-                data[k] = convert_string_sizes(v)
+                data[k] = convert_string_sizes(v, target=target)
     return data

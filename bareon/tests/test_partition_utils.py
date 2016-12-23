@@ -19,6 +19,7 @@ import unittest2
 
 from bareon import errors
 from bareon.tests import utils as test_utils
+from bareon.utils import block_device
 from bareon.utils import partition as pu
 from bareon.utils import utils
 
@@ -114,50 +115,48 @@ class TestPartitionUtils(unittest2.TestCase):
 
     @mock.patch.object(utils, 'udevadm_settle')
     @mock.patch.object(pu, 'reread_partitions')
-    @mock.patch.object(pu, 'scan_device')
+    @mock.patch('bareon.utils.block_device.Disk.new_by_device_scan')
     @mock.patch.object(utils, 'execute')
-    def test_make_partition(self, mock_exec, mock_info, mock_rerd, mock_udev):
+    def test_make_partition(self, mock_exec, mock_disk, mock_rerd, mock_udev):
         # should run parted OS command
         # in order to create new partition
         mock_exec.return_value = ('out', '')
 
-        mock_info.return_value = {
-            'parts': [
-                {'begin': 0, 'end': 1000, 'fstype': 'free'},
-            ]
-        }
+        mock_disk.return_value = disk_instance = mock.Mock()
+        disk_instance.allocate.return_value = block_device.Partition(
+            disk_instance,
+            block_device._BlockDevice(None, 100, 512),
+            100, None, None)
+
         pu.make_partition('/dev/fake', 100, 200, 'primary')
-        mock_exec_expected_calls = [
-            mock.call('parted', '-a', 'optimal', '-s', '/dev/fake', 'unit',
-                      'MiB', 'mkpart', 'primary', '100', '200',
-                      check_exit_code=[0, 1])]
+        mock_exec.assert_called_once_with(
+            'parted', '-a', 'optimal', '-s', '/dev/fake',
+            'unit', 's', 'mkpart', 'primary', '100', '199')
         mock_udev.assert_called_once_with()
-        self.assertEqual(mock_exec_expected_calls, mock_exec.call_args_list)
         mock_rerd.assert_called_once_with('/dev/fake', out='out')
 
     @mock.patch.object(utils, 'udevadm_settle')
     @mock.patch.object(pu, 'reread_partitions')
-    @mock.patch.object(pu, 'scan_device')
+    @mock.patch('bareon.utils.block_device.Disk.new_by_device_scan')
     @mock.patch.object(utils, 'execute')
-    def test_make_partition_minimal(self, mock_exec, mock_info, mock_rerd,
+    def test_make_partition_minimal(self, mock_exec, mock_disk, mock_rerd,
                                     mock_udev):
         # should run parted OS command
         # in order to create new partition
         mock_exec.return_value = ('out', '')
 
-        mock_info.return_value = {
-            'parts': [
-                {'begin': 0, 'end': 1000, 'fstype': 'free'},
-            ]
-        }
+        mock_disk.return_value = disk_instance = mock.Mock()
+        disk_instance.allocate.return_value = block_device.Partition(
+            disk_instance,
+            block_device._BlockDevice(None, 100, 512),
+            100, None, None)
+
         pu.make_partition('/dev/fake', 100, 200, 'primary',
                           alignment='minimal')
-        mock_exec_expected_calls = [
-            mock.call('parted', '-a', 'minimal', '-s', '/dev/fake', 'unit',
-                      'MiB', 'mkpart', 'primary', '100', '200',
-                      check_exit_code=[0, 1])]
+        mock_exec.assert_called_once_with(
+            'parted', '-a', 'minimal', '-s', '/dev/fake',
+            'unit', 's', 'mkpart', 'primary', '100', '199')
         mock_udev.assert_called_once_with()
-        self.assertEqual(mock_exec_expected_calls, mock_exec.call_args_list)
         mock_rerd.assert_called_once_with('/dev/fake', out='out')
 
     def test_make_partition_wrong_alignment(self):
@@ -179,26 +178,27 @@ class TestPartitionUtils(unittest2.TestCase):
         self.assertRaises(errors.WrongPartitionSchemeError, pu.make_partition,
                           '/dev/fake', 200, 100, 'primary')
 
-    @mock.patch.object(pu, 'scan_device')
+    # FIXME(dbogun): do this kind of test on utils.block_device.Disk level
+    @mock.patch('bareon.utils.block_device.Disk.new_by_device_scan')
     @mock.patch.object(utils, 'execute')
-    def test_make_partition_overlaps_other_parts(self, mock_exec, mock_info):
+    def test_make_partition_overlaps_other_parts(
+            self, mock_exec, disk_factory):
         # should check if begin or end overlap other partitions
         # should raise exception if it does
-        mock_info.return_value = {
-            'parts': [
-                {'begin': 0, 'end': 100, 'fstype': 'free'},
-                {'begin': 100, 'end': 200, 'fstype': 'notfree'},
-                {'begin': 200, 'end': 300, 'fstype': 'free'}
-            ]
-        }
-        self.assertRaises(errors.WrongPartitionSchemeError, pu.make_partition,
-                          '/dev/fake', 99, 101, 'primary')
-        self.assertRaises(errors.WrongPartitionSchemeError, pu.make_partition,
-                          '/dev/fake', 100, 200, 'primary')
-        self.assertRaises(errors.WrongPartitionSchemeError, pu.make_partition,
-                          '/dev/fake', 200, 301, 'primary')
-        self.assertEqual(mock_info.call_args_list,
-                         [mock.call('/dev/fake')] * 3)
+
+        mock_exec.return_value = 'mock: exec-stdout', 'mock: exec-stderr'
+
+        disk = block_device.Disk(
+            block_device._BlockDevice('/dev/fake', 300, 512), 'gpt')
+        disk.register(
+            block_device.Partition(
+                disk, block_device._BlockDevice(None, 100, 512),
+                100, 1, 0x8300))
+
+        disk_factory.return_value = disk
+
+        self.assertRaises(errors.BlockDeviceSchemeError, pu.make_partition,
+                          '/dev/fake', 0 * 512, 102 * 512, 'primary')
 
     @mock.patch.object(utils, 'udevadm_settle')
     @mock.patch.object(pu, 'reread_partitions')
@@ -287,7 +287,7 @@ class TestPartitionUtils(unittest2.TestCase):
                 {
                     'size': 1015808,
                     'begin': 32768,
-                    'end': 1048064,
+                    'end': 1048575,
                     'fstype': 'free',
                     'master_dev': '/dev/sda'
                 },
@@ -295,7 +295,7 @@ class TestPartitionUtils(unittest2.TestCase):
                     'num': 1,
                     'size': 25598885888,
                     'begin': 1048576,
-                    'end': 25599933952,
+                    'end': 25599934463,
                     'fstype': 'ext4',
                     'guid': '70D0A7D8-FA3B-4FF0-922D-1DFDBF1072F2',
                     'uuid': 'd48c3dcf-73df-4c6d-864f-1c758469ee41',
@@ -308,7 +308,7 @@ class TestPartitionUtils(unittest2.TestCase):
                     'num': 3,
                     'size': 25599934464,
                     'begin': 25599934464,
-                    'end': 51199868416,
+                    'end': 51199868927,
                     'fstype': 'ext4',
                     'guid': '6B4A0679-831E-44C9-8500-90905960F797',
                     'uuid': '07429a83-8583-49c9-91f1-abe4d78d163f',
@@ -320,7 +320,7 @@ class TestPartitionUtils(unittest2.TestCase):
                 {
                     'size': 1048576,
                     'begin': 51199868928,
-                    'end': 51200916992,
+                    'end': 51200917503,
                     'fstype': 'free',
                     'master_dev': '/dev/sda'
                 },
@@ -328,7 +328,7 @@ class TestPartitionUtils(unittest2.TestCase):
                     'num': 5,
                     'size': 10239344640,
                     'begin': 51200917504,
-                    'end': 61440261632,
+                    'end': 61440262143,
                     'fstype': 'swap',
                     'guid': '04003F45-3426-47EA-BAA0-0220F2CC6B6C',
                     'uuid': 'ad5b5e5e-b999-468f-8ebb-032c7281e2bd',
@@ -340,7 +340,7 @@ class TestPartitionUtils(unittest2.TestCase):
                 {
                     'size': 1048576,
                     'begin': 61440262144,
-                    'end': 61441310208,
+                    'end': 61441310719,
                     'fstype': 'free',
                     'master_dev': '/dev/sda'
                 },
@@ -348,7 +348,7 @@ class TestPartitionUtils(unittest2.TestCase):
                     'num': 6,
                     'size': 930172895232,
                     'begin': 61441310720,
-                    'end': 991614205440,
+                    'end': 991614205951,
                     'fstype': 'ext4',
                     'guid': 'BC2B584B-4A02-47A3-ACA5-9764F6CC5A40',
                     'uuid': 'd625c5de-a050-49a1-bdba-b02bb5cf726e',
@@ -360,7 +360,7 @@ class TestPartitionUtils(unittest2.TestCase):
                 {
                     'size': 1048576,
                     'begin': 991614205952,
-                    'end': 991615254016,
+                    'end': 991615254527,
                     'fstype': 'free',
                     'master_dev': '/dev/sda'
                 },
@@ -368,7 +368,7 @@ class TestPartitionUtils(unittest2.TestCase):
                     'num': 7,
                     'size': 8588886016,
                     'begin': 991615254528,
-                    'end': 1000204140032,
+                    'end': 1000204140543,
                     'fstype': 'ext4',
                     'guid': '28404402-736E-46D3-B623-F6F2868079B8',
                     'uuid': '746baf3e-e06d-4057-b165-be4a49f195e4',
@@ -380,7 +380,7 @@ class TestPartitionUtils(unittest2.TestCase):
                 {
                     'size': 745984,
                     'begin': 1000204140544,
-                    'end': 1000204886016,
+                    'end': 1000204886527,
                     'fstype': 'free',
                     'master_dev': '/dev/sda'
                 }
