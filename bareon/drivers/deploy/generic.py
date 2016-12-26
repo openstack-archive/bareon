@@ -89,7 +89,22 @@ class GenericDeployDriver(BaseDeployDriver, mixins.MountableMixin):
 
     def do_partitioning(self):
         LOG.debug('--- Partitioning disks (do_partitioning) ---')
-        PolicyPartitioner(self.driver).partition()
+
+        try:
+            storage_claim = self.driver.storage_claim
+        except AttributeError:
+            # TODO(dbogun): completely replace deprecated partitioning code
+            PolicyPartitioner(self.driver).partition()
+        else:
+            handlers_map = {
+                'clean': PartitionPolicyClean,
+                'verify': PartitionPolicyVerify,
+                'nailgun_legacy': PartitionPolicyNailgun}
+            handler = handlers_map[self.driver.partitions_policy]
+            handler = handler(self, storage_claim)
+
+            handler()
+
         LOG.debug('--- Partitioning disks END (do_partitioning) ---')
 
     def do_configdrive(self):
@@ -304,158 +319,19 @@ class PolicyPartitioner(object):
                   % self.driver.partitions_policy)
 
         policy_handlers = {
-            "verify": self._handle_verify,
-            "clean": self._handle_clean,
             "nailgun_legacy": self._handle_nailgun_legacy,
         }
 
-        known_policies = policy_handlers.keys()
-        if policy not in known_policies:
+        if policy not in policy_handlers:
             raise errors.WrongPartitionPolicyError(
                 "'%s' policy is not one of known ones: %s"
-                % (policy, known_policies))
+                % (policy, ', '.join(policy_handlers)))
 
         policy_handlers[policy]()
-
-    def _handle_verify(self):
-        provision_schema = self.driver.partition_scheme.to_dict()
-        hw_schema = self.driver.hw_partition_scheme.to_dict()
-        PartitionSchemaCompareTool().assert_no_diff(provision_schema,
-                                                    hw_schema)
-        self.partitioning._do_clean_filesystems()
-
-    @staticmethod
-    def _verify_disk_size(parteds, hu_disks):
-        for parted in parteds:
-            disks = [d for d in hu_disks if d.get('name') == parted.name]
-            if not disks:
-                raise errors.DiskNotFoundError(
-                    'No physical disks found matching: %s' % parted.name)
-
-            try:
-                disk_size_bytes = disks[0]['bspec']['size64']
-                disk_size_bytes = int(disk_size_bytes)
-            except (KeyError, IndexError, ValueError):
-                raise ValueError('Cannot read size of the disk: %s'
-                                 % disks[0].get('name'))
-
-            # It's safer to understate the physical disk size
-            if parted.size > disk_size_bytes:
-                raise errors.NotEnoughSpaceError(
-                    'Partition scheme for: %(disk)s exceeds the size of the '
-                    'disk. Scheme size is %(scheme_size)s, and disk size '
-                    'is %(disk_size)s.' % {
-                        'disk': parted.name, 'scheme_size': parted.disk_size,
-                        'disk_size': disk_size_bytes})
-
-    def _handle_clean(self):
-        self._verify_disk_size(self.driver.partition_scheme.parteds,
-                               self.driver.hu_disks)
-        self.partitioning._do_partitioning()
 
     def _handle_nailgun_legacy(self):
         # Corresponds to nailgun behavior.
         self.partitioning.execute()
-
-
-class PartitionSchemaCompareTool(object):
-
-    def assert_no_diff(self, user_schema, hw_schema):
-        usr_sch = self._prepare_user_schema(user_schema, hw_schema)
-        hw_sch = self._prepare_hw_schema(user_schema, hw_schema)
-        # NOTE(lobur): this may not work on bm hardware: because of the
-        # partition alignments sizes may not match precisely, so need to
-        # write own diff tool
-        if not usr_sch == hw_sch:
-            diff_str = utils.dict_diff(usr_sch, hw_sch,
-                                       "user_schema", "hw_schema")
-            raise errors.PartitionSchemeMismatchError(diff_str)
-        LOG.debug("hw_schema and user_schema matched")
-
-    def _prepare_user_schema(self, user_schema, hw_schema):
-        LOG.debug('Preparing user_schema for verification:\n%s' %
-                  user_schema)
-        # Set all keep_data (preserve) flags to false.
-        # They are just instructions to deploy driver and do not stored on
-        # resulting partitions, so we have no means to read them from
-        # hw_schema
-        for fs in user_schema['fss']:
-            fs['keep_data'] = False
-            fs['os_id'] = []
-        for parted in user_schema['parteds']:
-            for part in parted['partitions']:
-                part['keep_data'] = False
-
-        self._begin_end_into_size(user_schema)
-
-        LOG.debug('Prepared user_schema is:\n%s' % user_schema)
-        return user_schema
-
-    def _prepare_hw_schema(self, user_schema, hw_schema):
-        LOG.debug('Preparing hw_schema to verification:\n%s' %
-                  hw_schema)
-
-        user_disks = [p['name'] for p in user_schema['parteds']]
-
-        # Ignore disks which are not mentioned in user_schema
-        filtered_disks = []
-        for disk in hw_schema['parteds']:
-            if disk['name'] in user_disks:
-                filtered_disks.append(disk)
-            else:
-                LOG.info("Node disk '%s' is not mentioned in deploy_config"
-                         " thus it will be skipped." % disk['name'])
-        hw_schema['parteds'] = filtered_disks
-
-        # Ignore filesystems that belong to disk not mentioned in user_schema
-        filtered_fss = []
-        for fs in hw_schema['fss']:
-            if fs['device'].rstrip("0123456789") in user_disks:
-                filtered_fss.append(fs)
-            else:
-                LOG.info("Node filesystem '%s' belongs to disk not mentioned"
-                         " in deploy_config thus it will be skipped."
-                         % fs['device'])
-        hw_schema['fss'] = filtered_fss
-
-        # Transform filesystem types
-        for fs in hw_schema['fss']:
-            fs['fs_type'] = self._transform_fs_type(fs['fs_type'])
-            fs['os_id'] = []
-
-        self._begin_end_into_size(hw_schema)
-
-        LOG.debug('Prepared hw_schema is:\n%s' % hw_schema)
-        return hw_schema
-
-    def _transform_fs_type(self, hw_fs_type):
-        # hw fstype name pattern -> fstype name in user schema
-        hw_fs_to_user_fs_map = {
-            'linux-swap': 'swap'
-        }
-
-        for hw_fs_pattern, usr_schema_val in hw_fs_to_user_fs_map.iteritems():
-            if hw_fs_pattern in hw_fs_type:
-                LOG.info("Node fs type '%s' is transformed to the user "
-                         "schema type as '%s'."
-                         % (hw_fs_type, usr_schema_val))
-                return usr_schema_val
-
-        return hw_fs_type
-
-    @staticmethod
-    def _begin_end_into_size(schema):
-        # We can't rely on ("begin", "end") fields created from user request.
-        # Because they don't take in account reserved zones added by partition
-        # schema.
-        # Order plus size plus type should be strict enough for our check.
-        for disk in schema['parteds']:
-            disk.pop('size', None)
-            for p in disk['partitions']:
-                if 'size' not in p:
-                    p['size'] = p['end'] - p['begin']
-                del p['begin']
-                del p['end']
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -564,7 +440,7 @@ class AbstractPartitionPolicy(object):
                     claim.payload.guid = actual.payload.guid
                 continue
 
-            raise errors.PartitionSchemaMismatchError(
+            raise errors.PartitionSchemeMismatchError(
                 'Unable to resolv claim devices into physical devices. '
                 'Claim and physical devices partitions are different. '
                 '(dev={}, {}: {!r} != {!r})'.format(
@@ -738,7 +614,7 @@ class PartitionPolicyVerify(AbstractPartitionPolicy):
             desired_partition = self._grab_storage_segments(
                 vg, self._lvm_fuzzy_cmp_factor)
         except errors.VGNotFoundError:
-            raise errors.PartitionSchemaMismatchError(
+            raise errors.PartitionSchemeMismatchError(
                 'There is no LVMvg {}'.format(vg_claim.idnr))
 
         if actual_partition == desired_partition:
@@ -762,7 +638,7 @@ class PartitionPolicyVerify(AbstractPartitionPolicy):
 
     # TODO(dbogun): increase verbosity
     def _report_mismatch(self, dev, desired, actual):
-        raise errors.PartitionSchemaMismatchError(
+        raise errors.PartitionSchemeMismatchError(
             'Partition mismatch on {}'.format(dev))
 
     def _make_filesystem(self, claim):

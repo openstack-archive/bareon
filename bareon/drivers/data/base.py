@@ -58,10 +58,6 @@ class PartitioningDataDriverMixin(object):
     def partition_scheme(self):
         """Retruns instance of PartionScheme object"""
 
-    @abc.abstractproperty
-    def hw_partition_scheme(self):
-        """Returns instance of PartitionSchema object"""
-
 
 @six.add_metaclass(abc.ABCMeta)
 class ProvisioningDataDriverMixin(object):
