@@ -517,3 +517,19 @@ def list_opts():
     :returns: a list of (group_name, opts) tuples
     """
     return [(None, (u_opts))]
+
+
+class EqualComparisonMixin(object):
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self._comparable_shape(self) == other._comparable_shape(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    @classmethod
+    def _comparable_shape(cls, target):
+        return {
+            'cls': cls,
+            'payload': vars(target)}

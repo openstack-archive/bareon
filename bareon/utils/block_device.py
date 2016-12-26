@@ -94,11 +94,65 @@ class DeviceFinder(object):
         return end
 
 
-class SizeUnit(object):
+# TODO(dbogun): this object can/should be removed
+# The only reason why it exists - to keep "remaining" size. All other kinds can
+# be stored into SizeUnit.
+class SpaceClaim(utils.EqualComparisonMixin, object):
+    _kind = itertools.count()
+    KIND_EXACT = next(_kind)
+    KIND_PERCENTAGE = next(_kind)
+    KIND_BIGGEST = next(_kind)
+    del _kind
+
+    _kind_names = {
+        KIND_EXACT: 'EXACT',
+        KIND_PERCENTAGE: 'PERCENTAGE',
+        KIND_BIGGEST: 'REMAINING'}
+
+    @classmethod
+    def new_biggest(cls):
+        return cls(None, cls.KIND_BIGGEST)
+
+    @classmethod
+    def new_by_sizeunit(cls, size):
+        if size.unit == '%':
+            return cls.new_percent(size)
+        return cls.new_exact(size)
+
+    @classmethod
+    def new_percent(cls, value):
+        if not isinstance(value, SizeUnit):
+            value = SizeUnit.new_by_string('{} %'.format(value))
+        if value.unit != '%':
+            raise TypeError('Unsuitable value for percentage space claim: '
+                            '{!r}'.format(value))
+        return cls(value, cls.KIND_PERCENTAGE)
+
+    @classmethod
+    def new_exact(cls, value):
+        if not isinstance(value, SizeUnit):
+            value = SizeUnit.new_by_string('{} B'.format(value))
+        if value.bytes is None:
+            raise TypeError('Unsuitable value for exact space claim: '
+                            '{!r}'.format(value))
+        return cls(value, cls.KIND_EXACT)
+
+    def __init__(self, size, kind):
+        self.size = size
+        self.kind = kind
+
+    def __call__(self, storage, from_tail=False):
+        raise NotImplementedError
+
+    def __repr__(self):
+        return '<{} {}:{!r}>'.format(
+            type(self).__name__, self._kind_names[self.kind], self.size)
+
+
+class SizeUnit(utils.EqualComparisonMixin, object):
     bytes = None
 
     _unit_multiplier = {
-        'max': None,
         '%': None,
         's': 512,
         'B': 1
@@ -183,6 +237,12 @@ class SizeUnit(object):
         if multiplier is not None:
             self.bytes = int(value * multiplier)
 
+    def __repr__(self):
+        value = str(self)
+        if self.bytes is not None and self.unit != 'B':
+            value = '{} == {} B'.format(value, self.bytes)
+        return '<{}: {}>'.format(type(self).__name__, value)
+
     def __str__(self):
         if self.value == self.value_int:
             value = self.value_int
@@ -217,6 +277,18 @@ class SizeUnit(object):
         else:
             raise ValueError(
                 'Illegal input for {}.value field: {!r}'.format(cls, value))
+        return value
+
+    @classmethod
+    def _comparable_shape(cls, target):
+        value = super(SizeUnit, cls)._comparable_shape(target)
+        if target.bytes is not None:
+            fields = ('bytes', )
+        else:
+            fields = ('value', 'value_int', 'unit')
+        value['payload'] = {
+            k: v for k, v in value['payload'].items()
+            if k in fields}
         return value
 
 

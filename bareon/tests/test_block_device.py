@@ -95,6 +95,22 @@ class TestDeviceFinder(unittest2.TestCase):
                 errors.BlockDeviceNotFoundError, finder, kind, needle)
 
 
+class TestSpaceClaim(unittest2.TestCase):
+    def test_percentage(self):
+        claim = block_device.SpaceClaim.new_by_sizeunit(
+            block_device.SizeUnit.new_by_string('20 %'))
+        self.assertEqual(
+            (block_device.SpaceClaim.KIND_PERCENTAGE, (20, '%')),
+            (claim.kind, (claim.size.value, claim.size.unit)))
+
+    def test_exact(self):
+        claim = block_device.SpaceClaim.new_by_sizeunit(
+            block_device.SizeUnit.new_by_string('100 MiB'))
+        self.assertEqual(
+            (block_device.SpaceClaim.KIND_EXACT, (100, 'MiB')),
+            (claim.kind, (claim.size.value, claim.size.unit)))
+
+
 class TestSizeUnit(unittest2.TestCase):
     def test_all_suffixes(self):
         for value, suffix, expect in (
