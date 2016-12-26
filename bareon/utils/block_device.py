@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import abc
+import collections
 import functools
 import itertools
 import logging
@@ -25,6 +26,7 @@ import six
 
 from bareon import errors
 from bareon.utils import hardware
+from bareon.utils import lvm
 from bareon.utils import utils
 
 LOG = logging.getLogger(__name__)
@@ -726,6 +728,91 @@ class DiskSegment(AbstractSegment):
         right = cls(self.owner, boundary, self.end, self.kind, self.payload)
 
         return left, right
+
+
+class LVM(AbstractStorage):
+    block_size = 1024 * 1024
+
+    @classmethod
+    def new_by_scan(cls, name, lv=True):
+        vg_set = lvm.vgdisplay()
+        vg = cls(cls._filter_vg_by_name(vg_set, name))
+        if not lv:
+            return vg
+
+        lv_by_pv = collections.defaultdict(list)
+        for raw in lvm.lvdisplay():
+            try:
+                lv_by_pv[raw['vg']].append(raw)
+            except KeyError:
+                raise errors.InternalError()
+
+        for raw in lv_by_pv[vg.name]:
+            vg.register(raw)
+
+        return vg
+
+    def __init__(self, vg):
+        try:
+            self.name = vg['name']
+            self.usable_size = self.size = vg['size']
+            self.free = vg['free']
+            self.uuid = vg['uuid']
+        except KeyError:
+            raise errors.InternalError()
+
+        self.segments = [LVMSegment(self, LVMSegment.KIND_FREE, self.free)]
+
+    def calc_biggest_unallocated_chunk(self):
+        if not self.free:
+            raise errors.BlockDeviceAllocationError(
+                'There is no free space on {}'.format(self))
+        return self.blocks_to_sizeunit(self.free)
+
+    def allocate(self, size, from_tail=False):
+        claim_accuracy = self.sizeunit_to_blocks(self.allocate_accuracy)
+        claim = self.sizeunit_to_blocks(size)
+        claim_min = max(claim - claim_accuracy, 0)
+
+        if self.free < claim_min:
+            raise errors.BlockDeviceAllocationError(
+                'Unable to allocate {}(accuracy: {}) on LVM vg {}'.format(
+                    size, self.allocate_accuracy, self.name))
+
+        claim = min(claim, self.free)
+        segment = LVMSegment(self, LVMSegment.KIND_BUSY, claim)
+
+        self.free -= segment.size
+        self.segments.append(segment)
+        self.segments[0].size -= segment.size
+        return segment
+
+    def register(self, lv):
+        try:
+            size = lv['size']
+        except KeyError:
+            raise errors.InternalError()
+
+        segment = LVMSegment(
+            self, LVMSegment.KIND_BUSY, size, payload=lv)
+        self.free -= segment.size
+        self.segments.append(segment)
+        return segment
+
+    @staticmethod
+    def _filter_vg_by_name(vg_set, name):
+        for vg in vg_set:
+            if vg['name'] != name:
+                continue
+            break
+        else:
+            raise errors.VGNotFoundError(
+                'There is no LVMvg named "{}"'.format(name))
+        return vg
+
+
+class LVMSegment(AbstractSegment):
+    pass
 
 
 class Partition(BlockDevicePayload):
