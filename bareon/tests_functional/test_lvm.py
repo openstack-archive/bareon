@@ -147,18 +147,18 @@ BYT;
 BYT;
 /dev/vda:4295MB:virtblk:512:512:gpt:Virtio Block Device:;
 1:1049kB:26.2MB:25.2MB::primary:bios_grub;
-2:26.2MB:2123MB:2097MB::primary:;
-3:2123MB:3147MB:1023MB::primary:;
+2:26.2MB:2123MB:2097MB::primary:lvm;
+3:2123MB:3147MB:1023MB::primary:lvm;
 
 BYT;
 /dev/vdb:2147MB:virtblk:512:512:gpt:Virtio Block Device:;
 1:1049kB:26.2MB:25.2MB::primary:bios_grub;
-2:26.2MB:2098MB:2072MB::primary:;
+2:26.2MB:2098MB:2072MB::primary:lvm;
 
   PV         VG            Fmt  Attr PSize   PFree
-  /dev/vda2  fpa_test_vg_1 lvm2 a--    1.89g 4.00m
-  /dev/vda3  fpa_test_vg_2 lvm2 a--  916.00m 8.00m
-  /dev/vdb2  fpa_test_vg_2 lvm2 a--    1.87g    0
+  /dev/vda2  fpa_test_vg_1 lvm2 a--    1.95g  60.00m
+  /dev/vda3  fpa_test_vg_2 lvm2 a--  972.00m 120.00m
+  /dev/vdb2  fpa_test_vg_2 lvm2 a--    1.93g      0
   LV           VG            Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
   fpa_root_vol fpa_test_vg_1 -wi-a----- 1000.00m
   fpa_var_vol  fpa_test_vg_1 -wi-a-----  936.00m
@@ -228,7 +228,7 @@ BYT;
                             "type": "lv",
                             "name": "fpa_usr_vol",
                             "mount": "/usr",
-                            "size": "1348",  # (976+500) - 2*64 (lvm meta)
+                            "size": "100%",
                             "file_system": "ext3"
                         }
                     ]
@@ -244,7 +244,7 @@ BYT;
                             "type": "lv",
                             "name": "fpa_opt_vol",
                             "mount": "/opt",
-                            "size": "936",  # 1000 - 1*64 (lvm meta)
+                            "size": "100%",
                             "file_system": "ext4"
                         }
                     ]
@@ -263,31 +263,31 @@ BYT;
         actual = node.run_cmd('parted -lm && pvs && lvs')[0]
         expected = """
 BYT;
-/dev/mapper/fpa_test_vg_2-fpa_opt_vol:981MB:dm:512:512:loop:Linux device-mapper (linear):;
-1:0.00B:981MB:981MB:ext4::;
+/dev/mapper/fpa_test_vg_2-fpa_opt_vol:1044MB:dm:512:512:loop:Linux device-mapper (linear):;
+1:0.00B:1044MB:1044MB:ext4::;
 
 BYT;
-/dev/mapper/fpa_test_vg_1-fpa_usr_vol:1413MB:dm:512:512:loop:Linux device-mapper (linear):;
-1:0.00B:1413MB:1413MB:ext3::;
+/dev/mapper/fpa_test_vg_1-fpa_usr_vol:1539MB:dm:512:512:loop:Linux device-mapper (linear):;
+1:0.00B:1539MB:1539MB:ext3::;
 
 BYT;
 /dev/vda:4295MB:virtblk:512:512:gpt:Virtio Block Device:;
 1:1049kB:26.2MB:25.2MB::primary:bios_grub;
 2:26.2MB:2622MB:2596MB:ext4:primary:;
-3:2622MB:3147MB:524MB::primary:;
+3:2622MB:3147MB:524MB::primary:lvm;
 
 BYT;
 /dev/vdb:2147MB:virtblk:512:512:gpt:Virtio Block Device:;
 1:1049kB:26.2MB:25.2MB::primary:bios_grub;
-2:26.2MB:1050MB:1023MB::primary:;
-3:1050MB:2098MB:1049MB::primary:;
+2:26.2MB:1050MB:1023MB::primary:lvm;
+3:1050MB:2098MB:1049MB::primary:lvm;
 
   PV         VG            Fmt  Attr PSize   PFree
-  /dev/vda3  fpa_test_vg_1 lvm2 a--  440.00m 8.00m
-  /dev/vdb2  fpa_test_vg_1 lvm2 a--  916.00m    0
-  /dev/vdb3  fpa_test_vg_2 lvm2 a--  940.00m 4.00m
+  /dev/vda3  fpa_test_vg_1 lvm2 a--  496.00m    0
+  /dev/vdb2  fpa_test_vg_1 lvm2 a--  972.00m    0
+  /dev/vdb3  fpa_test_vg_2 lvm2 a--  996.00m    0
   LV          VG            Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
-  fpa_usr_vol fpa_test_vg_1 -wi-a-----   1.32g
-  fpa_opt_vol fpa_test_vg_2 -wi-a----- 936.00m
+  fpa_usr_vol fpa_test_vg_1 -wi-a-----   1.43g
+  fpa_opt_vol fpa_test_vg_2 -wi-a----- 996.00m
 """  # noqa
         utils.assertNoDiff(expected, actual)
