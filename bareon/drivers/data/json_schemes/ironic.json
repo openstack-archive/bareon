@@ -61,31 +61,48 @@
             "required": [
               "type",
               "id",
-              "volumes",
-              "size"
+              "size",
+              "volumes"
             ],
             "properties": {
+              "type": {"enum": ["disk"]},
+              "id": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "scsi",
+                      "path",
+                      "name"
+                    ]
+                  }
+                }
+              },
               "name": {
                 "type": "string"
               },
+              "size": {
+                "type": "string"
+              },
               "volumes": {
+                "type": "array",
                 "items": {
                   "anyOf": [
                     {
+                      "type": "object",
                       "required": [
                         "type",
                         "size",
                         "vg"
                       ],
-                      "type": "object",
                       "properties": {
+                        "type": {"enum": ["pv"]},
                         "vg": {
                           "type": "string"
-                        },
-                        "type": {
-                          "enum": [
-                            "pv"
-                          ]
                         },
                         "keep_data": {
                           "type": "boolean"
@@ -99,25 +116,20 @@
                       }
                     },
                     {
+                      "type": "object",
                       "required": [
                         "type",
-                        "size"
+                        "size",
+                        "mount"
                       ],
-                      "type": "object",
                       "properties": {
-                        "mount": {
-                          "type": "string"
-                        },
                         "type": {
                           "enum": [
                             "raid",
                             "partition"
                           ]
                         },
-                        "keep_data": {
-                          "type": "boolean"
-                        },
-                        "file_system": {
+                        "mount": {
                           "type": "string"
                         },
                         "name": {
@@ -125,21 +137,23 @@
                         },
                         "size": {
                           "type": "string"
+                        },
+                        "keep_data": {
+                          "type": "boolean"
+                        },
+                        "file_system": {
+                          "type": "string"
                         }
                       }
                     },
                     {
+                      "type": "object",
                       "required": [
                         "type",
                         "size"
                       ],
-                      "type": "object",
                       "properties": {
-                        "type": {
-                          "enum": [
-                            "boot"
-                          ]
-                        },
+                        "type": {"enum": ["boot"]},
                         "size": {
                           "type": "string"
                         },
@@ -166,32 +180,7 @@
                       }
                     }
                   ]
-                },
-                "type": "array"
-              },
-              "type": {
-                "enum": [
-                  "disk"
-                ]
-              },
-              "id": {
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "enum": [
-                      "scsi",
-                      "path",
-                      "name"
-                    ]
-                  }
                 }
-              },
-              "size": {
-                "type": "string"
               }
             }
           },
@@ -203,7 +192,8 @@
             ],
             "type": "object",
             "properties": {
-              "_allocate_size": {
+              "type": {"enum": ["vg"]},
+              "id": {
                 "type": "string"
               },
               "label": {
@@ -212,49 +202,40 @@
               "min_size": {
                 "type": "integer"
               },
+              "_allocate_size": {
+                "type": "string"
+              },
+              "keep_data": {
+                "type": "boolean"
+              },
               "volumes": {
+                "type": "array",
                 "items": {
+                  "type": "object",
                   "required": [
                     "type",
                     "size",
                     "name"
                   ],
-                  "type": "object",
                   "properties": {
+                    "type": {"enum": ["lv"]},
                     "mount": {
                       "type": "string"
-                    },
-                    "type": {
-                      "enum": [
-                        "lv"
-                      ]
-                    },
-                    "keep_data": {
-                      "type": "boolean"
                     },
                     "name": {
                       "type": "string"
                     },
-                    "file_system": {
+                    "size": {
                       "type": "string"
                     },
-                    "size": {
+                    "keep_data": {
+                      "type": "boolean"
+                    },
+                    "file_system": {
                       "type": "string"
                     }
                   }
-                },
-                "type": "array"
-              },
-              "type": {
-                "enum": [
-                  "vg"
-                ]
-              },
-              "keep_data": {
-                "type": "boolean"
-              },
-              "id": {
-                "type": "string"
+                }
               }
             }
           }
