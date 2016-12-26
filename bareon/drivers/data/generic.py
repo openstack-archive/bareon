@@ -23,7 +23,6 @@ from bareon.utils.partition import TiB
 from bareon.utils import utils
 
 from bareon.drivers.data.base import BaseDataDriver
-from bareon.drivers.data.base import ConfigDriveDataDriverMixin
 from bareon.drivers.data.base import GrubBootloaderDataDriverMixin
 from bareon.drivers.data.base import MultibootDeploymentMixin
 from bareon.drivers.data.base import PartitioningDataDriverMixin
@@ -45,9 +44,9 @@ CONF.register_opts(opts)
 class GenericDataDriver(BaseDataDriver,
                         PartitioningDataDriverMixin,
                         ProvisioningDataDriverMixin,
-                        ConfigDriveDataDriverMixin,
                         GrubBootloaderDataDriverMixin,
                         MultibootDeploymentMixin):
+    partitions_policy = None
 
     def __init__(self, data):
         super(GenericDataDriver, self).__init__(data)
@@ -60,6 +59,7 @@ class GenericDataDriver(BaseDataDriver,
         # get rid of md over all disks for /boot partition.
         self._boot_done = False
 
+    # FIXME(dbogun): deprecated by new partitioning code
     @property
     def partition_scheme(self):
         if not hasattr(self, '_partition_scheme'):
@@ -68,11 +68,6 @@ class GenericDataDriver(BaseDataDriver,
 
     @property
     def hw_partition_scheme(self):
-        raise NotImplementedError
-
-    @property
-    def partitions_policy(self):
-        """Returns string"""
         raise NotImplementedError
 
     @property
@@ -99,20 +94,7 @@ class GenericDataDriver(BaseDataDriver,
             self._operating_system = self._get_operating_system()
         return self._operating_system
 
-    @property
-    def configdrive_scheme(self):
-        if not hasattr(self, '_configdrive_scheme'):
-            self._configdrive_scheme = self._get_configdrive_scheme()
-        return self._configdrive_scheme
-
-    @property
-    def is_configdrive_needed(self):
-        raise NotImplementedError
-
-    def create_configdrive(self):
-        if self.is_configdrive_needed:
-            self._create_configdrive()
-
+    # FIXME(dbogun): deprecated by new partitioning code
     def _get_partition_scheme(self):
         raise NotImplementedError
 
@@ -126,9 +108,6 @@ class GenericDataDriver(BaseDataDriver,
         raise NotImplementedError
 
     def _get_operating_system(self):
-        raise NotImplementedError
-
-    def _get_configdrive_scheme(self):
         raise NotImplementedError
 
     def _create_configdrive(self):
@@ -151,11 +130,13 @@ class GenericDataDriver(BaseDataDriver,
             md5=md5,
         )
 
+    # FIXME(dbogun): deprecated by new partitioning code
     @property
     def _ks_disks(self):
         return filter(lambda x: x['type'] == 'disk' and x['size'] > 0,
                       self._partition_data())
 
+    # FIXME(dbogun): deprecated by new partitioning code
     @property
     def _ks_vgs(self):
         return filter(lambda x: x['type'] == 'vg', self._partition_data())

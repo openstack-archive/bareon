@@ -25,7 +25,7 @@ echo "================== Rebuilding deploy images =================="
 
 source ${BUILD_ENV:-"bareon/tests_functional/image_build/centos_minimal_env.sh"}
 
-BAREON_PATH=$PWD
+BAREON_PATH="$PWD"
 
 rm -rf $BUILD_DIR
 mkdir $BUILD_DIR
@@ -44,8 +44,8 @@ sed -i -e 's%mv \(/usr/lib/locale/locale-archive\)%cp \1%' diskimage-builder/ele
 
 export PATH=$BUILD_DIR/diskimage-builder/bin:$BUILD_DIR/dib-utils/bin:$PATH
 
-export BAREON_SRC=file://$BAREON_PATH
-export BAREON_BRANCH=$(cd $BAREON_PATH && git rev-parse --abbrev-ref HEAD) # Use current branch
+export BAREON_SRC="file://$BAREON_PATH"
+export BAREON_BRANCH="$(cd $BAREON_PATH && git rev-parse --abbrev-ref HEAD)" # Use current branch
 
 export ELEMENTS_PATH="$BUILD_DIR/bareon-image-elements"
 

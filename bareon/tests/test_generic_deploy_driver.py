@@ -61,19 +61,6 @@ class TestDoProvision(unittest2.TestCase):
         mock_bootloader.assert_called_once_with()
 
 
-class TestDoConfigDrive(unittest2.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestDoConfigDrive, self).__init__(*args, **kwargs)
-        self.mock_data_driver = mock.MagicMock()
-        self.driver = generic.GenericDeployDriver(self.mock_data_driver)
-
-    def test_do_configdrive(self):
-        result = self.driver.do_configdrive()
-
-        self.assertIsNone(result)
-        self.mock_data_driver.create_configdrive.assert_called_once_with()
-
-
 class TestMountTarget(unittest2.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestMountTarget, self).__init__(*args, **kwargs)

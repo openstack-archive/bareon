@@ -23,6 +23,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import six
 
+from bareon.actions import configdrive
 from bareon.actions import partitioning
 from bareon.drivers.deploy.base import BaseDeployDriver
 from bareon.drivers.deploy import mixins
@@ -92,7 +93,7 @@ class GenericDeployDriver(BaseDeployDriver, mixins.MountableMixin):
         LOG.debug('--- Partitioning disks END (do_partitioning) ---')
 
     def do_configdrive(self):
-        self.driver.create_configdrive()
+        configdrive.ConfigDriveAction(self.driver).execute()
 
     def do_copyimage(self):
         raise NotImplementedError
@@ -291,8 +292,8 @@ class GenericDeployDriver(BaseDeployDriver, mixins.MountableMixin):
             json.dump(result, boot_entries_file)
 
 
+# FIXME(dbogun): deprecated due to NEWTCORE-360 fix
 class PolicyPartitioner(object):
-
     def __init__(self, driver):
         self.driver = driver
         self.partitioning = partitioning.PartitioningAction(self.driver)

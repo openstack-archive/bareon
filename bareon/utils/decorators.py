@@ -15,6 +15,7 @@
 #    under the License.
 
 
+# FIXME(dbogun): unused
 class abstractclassmethod(classmethod):
     """A decorator indicating abstract classmethods.
 
