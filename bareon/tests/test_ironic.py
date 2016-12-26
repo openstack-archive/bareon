@@ -227,183 +227,21 @@ LIST_BLOCK_DEVICES_SAMPLE = [
 
 
 class _IronicTest(unittest2.TestCase):
+    _dummy_deployment_config = {
+        'partitions': []
+    }
+
     def setUp(self):
         super(_IronicTest, self).setUp()
-        with mock.patch.object(ironic.Ironic, 'validate_data'):
-            self.data_driver = ironic.Ironic({'partitions': []})
-
-
-class TestIronicMatch(_IronicTest):
-    def test_match_device_by_scsi_matches(self):
-        # matches by scsi address
-        fake_ks_disk = {
-            'id': {
-                'type': 'scsi',
-                'value': '0:0:0:1'
-            }
-        }
-        fake_hu_disk = {
-            'scsi': '0:0:0:1'
-        }
-        self.assertTrue(
-            self.data_driver._match_device(fake_hu_disk, fake_ks_disk))
-
-    def test_match_device_by_scsi_not_matches(self):
-        # matches by scsi address
-        fake_ks_disk = {
-            'id': {
-                'type': 'scsi',
-                'value': '0:0:0:1'
-            }
-        }
-        fake_hu_disk = {
-            'scsi': '5:0:0:1'
-        }
-        self.assertFalse(
-            self.data_driver._match_device(fake_hu_disk, fake_ks_disk))
-
-    def test_match_device_by_path_matches(self):
-        fake_ks_disk = {
-            'id': {
-                'type': 'path',
-                'value': 'disk/by-path/pci-0000:00:07.0-virtio-pci-virtio3'
-            }
-        }
-        fake_hu_disk = {
-            'path': [
-                "/dev/disk/by-path/pci-0000:00:07.0-virtio-pci-virtio3",
-                "/dev/disk/by-path/fake_path",
-                "/dev/sdd"
-            ]
-        }
-        self.assertTrue(
-            self.data_driver._match_device(fake_hu_disk, fake_ks_disk))
-
-    def test_match_device_by_path_not_matches(self):
-        fake_ks_disk = {
-            'id': {
-                'type': 'path',
-                'value': 'disk/by-path/pci-0000:00:07.0-virtio-pci-virtio3'
-            }
-        }
-        fake_hu_disk = {
-            'path': [
-                "/dev/disk/by-path/fake_path",
-                "/dev/sdd"
-            ]
-        }
-        self.assertFalse(
-            self.data_driver._match_device(fake_hu_disk, fake_ks_disk))
-
-    def test_match_device_by_name_matches(self):
-        fake_ks_disk = {
-            'id': {
-                'type': 'name',
-                'value': 'sda'
-            }
-        }
-        fake_hu_disk = {
-            'name': '/dev/sda'
-        }
-        self.assertTrue(
-            self.data_driver._match_device(fake_hu_disk, fake_ks_disk))
-
-    def test_match_device_by_name_not_matches(self):
-        fake_ks_disk = {
-            'id': {
-                'type': 'name',
-                'value': 'sda'
-            }
-        }
-        fake_hu_disk = {
-            'name': '/dev/sdd'
-        }
-        self.assertFalse(
-            self.data_driver._match_device(fake_hu_disk, fake_ks_disk))
-
-
-@mock.patch('bareon.utils.hardware.scsi_address', mock.Mock())
-class TestNailgunMockedMeta(_IronicTest):
-    def test_partition_scheme(self):
-        with mock.patch.object(ironic.Ironic, 'validate_data'):
-            data_driver = ironic.Ironic(PROVISION_SAMPLE_DATA_SWIFT)
-
-        data_driver.get_image_ids = mock.MagicMock
-        mock_devices = data_driver._get_block_devices = mock.MagicMock()
-        mock_devices.return_value = LIST_BLOCK_DEVICES_SAMPLE
-
-        p_scheme = data_driver.partition_scheme
-        self.assertEqual(5, len(p_scheme.fss))
-        self.assertEqual(5, len(p_scheme.pvs))
-        self.assertEqual(3, len(p_scheme.lvs))
-        self.assertEqual(2, len(p_scheme.vgs))
-        self.assertEqual(3, len(p_scheme.parteds))
-
-
-@mock.patch('bareon.utils.hardware.get_block_devices_from_udev_db')
-class TestGetBlockDevices(_IronicTest):
-    def setUp(self):
-        super(TestGetBlockDevices, self).setUp()
-        self.mock_devices = mock.Mock()
-        self.data_driver._get_block_device_info = self.mock_devices
-
-    def test_no_devices(self, mock_get_block_devices_from_udev_db):
-        mock_get_block_devices_from_udev_db.return_value = []
-
-        result = self.data_driver._get_block_devices()
-        self.assertEqual(result, [])
-        mock_get_block_devices_from_udev_db.assert_called_once_with()
-        self.assertEqual(self.mock_devices.call_count, 0)
-
-    def test_device_info(self, mock_get_block_devices_from_udev_db):
-        data = {'test': 'fake'}
-
-        mock_get_block_devices_from_udev_db.return_value = [data]
-        self.mock_devices.return_value = block_device = 'test_value'
-        result = self.data_driver._get_block_devices()
-        self.assertEqual(result, [block_device])
-        mock_get_block_devices_from_udev_db.assert_called_once_with()
-        self.mock_devices.assert_called_once_with(data)
-
-
-@mock.patch('bareon.utils.hardware.get_device_ids')
-@mock.patch('bareon.utils.hardware.get_device_info')
-@mock.patch('bareon.utils.hardware.scsi_address')
-class TestGetBlockDevice(_IronicTest):
-    def test_no_device_info(self, mock_scsi_address, mock_get_device_info,
-                            mock_get_device_ids):
-        device = 'fake_device'
-
-        mock_scsi_address.return_value = None
-        mock_get_device_info.return_value = {}
-        mock_get_device_ids.return_value = []
-
-        result = self.data_driver._get_block_device_info(device)
-
-        self.assertEqual(result, {'name': 'fake_device'})
-
-    def test_device_info(self, mock_scsi_address, mock_get_device_info,
-                         mock_get_device_ids):
-        device = 'fake_device'
-        devpath = ['test/devpath']
-        uspec = {'DEVPATH': devpath}
-
-        mock_get_device_info.return_value = {
-            'uspec': uspec
-        }
-        mock_scsi_address.return_value = scsi_address = '1:0:0:0'
-        mock_get_device_ids.return_value = devpath
-
-        desired = {'path': devpath, 'name': device, 'scsi': scsi_address,
-                   'uspec': uspec}
-
-        result = self.data_driver._get_block_device_info(device)
-        self.assertEqual(result, desired)
-        mock_get_device_info.assert_called_once_with(device)
-        mock_scsi_address.assert_called_once_with(device)
+        with mock.patch.object(ironic.Ironic, 'validate_data'),\
+                mock.patch('bareon.objects.ironic.block_device.'
+                           'StorageSubsystem'):
+            self.data_driver = ironic.Ironic(self._dummy_deployment_config)
 
 
 @mock.patch('bareon.drivers.data.ironic.Ironic.validate_data', mock.Mock())
+@mock.patch(
+    'bareon.drivers.data.ironic.Ironic._get_image_scheme', mock.Mock())
 class TestGetGrub(unittest2.TestCase):
     @mock.patch('bareon.utils.utils.parse_kernel_cmdline')
     def test_kernel_params(self, cmdline_mock):
@@ -415,32 +253,41 @@ class TestGetGrub(unittest2.TestCase):
             "extrastuff": "test123"
         }
 
-        data_driver = ironic.Ironic(data)
+        with mock.patch('bareon.drivers.data.ironic.StorageParser'):
+            data_driver = ironic.Ironic(data)
 
         self.assertEqual('test_param=test_val BOOTIF=01-52-54-00-a5-55-58',
                          data_driver.grub.kernel_params)
 
-    def test_no_kernel_params(self):
+    @mock.patch('bareon.utils.utils.parse_kernel_cmdline')
+    def test_no_kernel_params(self, cmdline_mock):
         data = {'deploy_data': {'other_data': "test"},
                 'partitions': {}}
-        data_driver = ironic.Ironic(data)
+        cmdline_mock.return_value = {}
+
+        with mock.patch('bareon.drivers.data.ironic.StorageParser'):
+            data_driver = ironic.Ironic(data)
 
         self.assertEqual('', data_driver.grub.kernel_params)
 
 
 @mock.patch('bareon.drivers.data.ironic.Ironic.validate_data', mock.Mock())
+@mock.patch(
+    'bareon.drivers.data.ironic.Ironic._get_image_scheme', mock.Mock())
 class TestPartitionsPolicy(unittest2.TestCase):
     def test_partitions_policy(self):
         data = {'partitions_policy': "test_value",
                 'partitions': {}}
 
-        data_driver = ironic.Ironic(data)
+        with mock.patch('bareon.drivers.data.ironic.StorageParser'):
+            data_driver = ironic.Ironic(data)
 
         self.assertEqual('test_value', data_driver.partitions_policy)
 
     def test_partitions_policy_default(self):
         data = {'partitions': {}}
 
-        data_driver = ironic.Ironic(data)
+        with mock.patch('bareon.drivers.data.ironic.StorageParser'):
+            data_driver = ironic.Ironic(data)
 
         self.assertEqual('verify', data_driver.partitions_policy)

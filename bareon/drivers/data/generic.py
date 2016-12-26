@@ -67,10 +67,6 @@ class GenericDataDriver(BaseDataDriver,
         return self._partition_scheme
 
     @property
-    def hw_partition_scheme(self):
-        raise NotImplementedError
-
-    @property
     def image_scheme(self):
         if not hasattr(self, '_image_scheme'):
             self._image_scheme = self._get_image_scheme()
