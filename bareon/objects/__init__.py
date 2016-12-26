@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from bareon.objects.block_device import Exports as block_device
 from bareon.objects.bootloader import Grub
 from bareon.objects.configdrive import ConfigDriveCommon
 from bareon.objects.configdrive import ConfigDriveMcollective
@@ -44,6 +46,7 @@ FS = FileSystem
 
 
 __all__ = [
+    'block_device',
     'Partition',
     'Parted',
     'PhysicalVolume',
