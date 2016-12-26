@@ -24,6 +24,92 @@ KiB = 1024
 MiB = KiB * KiB
 
 
+class TestSizeUnit(unittest2.TestCase):
+    def test_all_suffixes(self):
+        for value, suffix, expect in (
+                (25.5, '%', ('25.5 %', None)),
+                (5, 's', ('5 s', 512 * 5)),
+                (200, 'B', ('200 B', 200)),
+                (2, 'KB', ('2 KB', 2 * 1000)),
+                (2, 'MB', ('2 MB', 2 * 1000 ** 2)),
+                (2, 'GB', ('2 GB', 2 * 1000 ** 3)),
+                (2, 'TB', ('2 TB', 2 * 1000 ** 4)),
+                (2, 'PB', ('2 PB', 2 * 1000 ** 5)),
+                (2, 'EB', ('2 EB', 2 * 1000 ** 6)),
+                (2, 'ZB', ('2 ZB', 2 * 1000 ** 7)),
+                (2, 'YB', ('2 YB', 2 * 1000 ** 8)),
+                (2, 'KiB', ('2 KiB', 2 * 1024)),
+                (2, 'MiB', ('2 MiB', 2 * 1024 ** 2)),
+                (2, 'GiB', ('2 GiB', 2 * 1024 ** 3)),
+                (2, 'TiB', ('2 TiB', 2 * 1024 ** 4)),
+                (2, 'PiB', ('2 PiB', 2 * 1024 ** 5)),
+                (2, 'EiB', ('2 EiB', 2 * 1024 ** 6)),
+                (2, 'ZiB', ('2 ZiB', 2 * 1024 ** 7)),
+                (2, 'YiB', ('2 YiB', 2 * 1024 ** 8))):
+            for glue in '', ' ':
+                raw = glue.join(str(x) for x in (value, suffix))
+                size = block_device.SizeUnit.new_by_string(raw)
+                self.assertEqual(expect, (str(size), size.bytes))
+
+    def test_fraction(self):
+        size = block_device.SizeUnit.new_by_string('2.5 KiB')
+        self.assertEqual(
+            ('2.5 KiB', 1024 * 2 + 512),
+            (str(size), size.bytes))
+
+    def test_in_unit(self):
+        size = block_device.SizeUnit.new_by_string('2.2 YiB')
+        for unit, expect in (
+                ('B',   2659636803152184399101952),
+                ('s',   5194603131156610154496),
+                ('KiB', 2597301565578305077248),
+                ('MiB', 2536427310135063552),
+                ('GiB', 2476979795053773),
+                ('TiB', 2418925581107.2),
+                ('PiB', 2362232012.8),
+                ('EiB', 2306867.2),
+                ('ZiB', 2252.8),
+                ('YiB', 2.2)):
+            other = size.in_unit(unit)
+            self.assertEqual(size.bytes, other.bytes)
+            self.assertEqual(expect, other.value)
+
+    def test_invalid_value(self):
+        self.assertRaises(
+            ValueError, block_device.SizeUnit.new_by_string, 'invalid')
+
+    def test_invalid_value_with_defaults(self):
+        self.assertRaises(
+            ValueError, block_device.SizeUnit.new_by_string,
+            'invalid', default_unit='KiB')
+
+    def test_invalid_suffix(self):
+        self.assertRaises(
+            ValueError, block_device.SizeUnit.new_by_string, '2 unknown')
+
+    def test_invalid_suffix_with_default(self):
+        self.assertRaises(
+            ValueError, block_device.SizeUnit.new_by_string,
+            '2 unknown', default_unit='KiB')
+
+    def test_default_unit(self):
+        size = block_device.SizeUnit.new_by_string('4', default_unit='KiB')
+        self.assertEqual(
+            ('4 KiB', 4 * 1024),
+            (str(size), size.bytes))
+
+    def test_ignore_default_unit(self):
+        size = block_device.SizeUnit.new_by_string('4 B', default_unit='KiB')
+        self.assertEqual(
+            ('4 B', 4),
+            (str(size), size.bytes))
+
+    def test_invalid_default_unit(self):
+        self.assertRaises(
+            ValueError,
+            block_device.SizeUnit.new_by_string, '4', default_unit='unknown')
+
+
 class TestBlockDevice(unittest2.TestCase):
     def test_disk_scan(self):
         expect = {

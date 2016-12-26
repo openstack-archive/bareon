@@ -26,6 +26,132 @@ from bareon.utils import utils
 LOG = logging.getLogger(__name__)
 
 
+class SizeUnit(object):
+    bytes = None
+
+    _unit_multiplier = {
+        'max': None,
+        '%': None,
+        's': 512,
+        'B': 1
+    }
+
+    m = 1
+    for name in ('KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'):
+        m *= 1000
+        _unit_multiplier[name] = m
+    m = 1
+    for name in ('KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'):
+        m *= 1024
+        _unit_multiplier[name] = m
+    del m
+
+    @classmethod
+    def new_by_string(cls, raw, default_unit=None):
+        suffix_by_length = cls._multiplier_suffixes_by_length()
+
+        raw = raw.strip()
+        match = ()
+        for split_at in range(len(raw), -1, -1):
+            value = raw[:split_at]
+            value = value.rstrip()
+            try:
+                value = cls._value_to_number(value)
+            except ValueError:
+                continue
+
+            suffix = raw[split_at:]
+            try:
+                suffix_candidate = suffix_by_length[len(suffix)]
+            except KeyError:
+                break
+
+            if suffix not in suffix_candidate:
+                continue
+
+            match = value, suffix
+
+        if not match:
+            if default_unit is None:
+                raise ValueError(
+                    'Unable to parse size record {}: there is no '
+                    'units'.format(raw))
+            match = cls._value_to_number(raw), default_unit
+
+        return cls(*match)
+
+    @classmethod
+    def new_by_bytes(cls, value_in_bytes, unit):
+        multiplier = cls._get_multiplier(unit)
+        value = value_in_bytes // multiplier
+        if value_in_bytes != value * multiplier:
+            value = value_in_bytes / float(multiplier)
+        return cls(value, unit)
+
+    @classmethod
+    def _multiplier_suffixes_by_length(cls):
+        suffix_by_length = {}
+        suffixes = set(cls._unit_multiplier)
+        for l in itertools.count(0):
+            if not suffixes:
+                break
+
+            match = set()
+            for s in suffixes:
+                if len(s) != l:
+                    continue
+                match.add(s)
+            suffix_by_length[l] = match
+            suffixes -= match
+
+        return suffix_by_length
+
+    def __init__(self, value, unit):
+        multiplier = self._get_multiplier(unit)
+
+        self.unit = unit
+        self.value = value
+        self.value_int = int(value)
+        if multiplier is not None:
+            self.bytes = int(value * multiplier)
+
+    def __str__(self):
+        if self.value == self.value_int:
+            value = self.value_int
+        else:
+            value = self.value
+        return '{} {}'.format(value, self.unit)
+
+    def in_unit(self, unit):
+        multiplier = self._get_multiplier(unit)
+        if self.bytes is None or multiplier is None:
+            raise ValueError('{} can\'t be converted in unit {}'.format(
+                self, unit))
+        return type(self).new_by_bytes(self.bytes, unit)
+
+    @classmethod
+    def _get_multiplier(cls, unit):
+        try:
+            multiplier = cls._unit_multiplier[unit]
+        except KeyError:
+            raise ValueError(
+                'Invalid size unit: {}'.format(unit))
+        return multiplier
+
+    @classmethod
+    def _value_to_number(cls, value):
+        for conv in (int, float):
+            try:
+                value = conv(value)
+            except ValueError:
+                continue
+            break
+        else:
+            raise ValueError(
+                'Illegal input for {}.value field: {!r}'.format(cls, value))
+        return value
+
+
 class BlockDevicePayload(object):
     def __init__(self, block, guid=None):
         self.block = block
@@ -348,12 +474,12 @@ class _BlockDevice(object):
 
 
 class _DiskSpaceDescriptor(object):
-    _kind_idnr = itertools.count()
-    KIND_FREE = next(_kind_idnr)
-    KIND_RESERVED = next(_kind_idnr)
-    KIND_ALIGN = next(_kind_idnr)
-    KIND_BUSY = next(_kind_idnr)
-    del _kind_idnr
+    _idnr = itertools.count()
+    KIND_FREE = next(_idnr)
+    KIND_RESERVED = next(_idnr)
+    KIND_ALIGN = next(_idnr)
+    KIND_BUSY = next(_idnr)
+    del _idnr
 
     _kind_names = {
         KIND_FREE: 'FREE',
