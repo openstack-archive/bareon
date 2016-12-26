@@ -12,11 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 
 class BaseError(Exception):
     def __init__(self, message, *args, **kwargs):
         self.message = message
         super(BaseError, self).__init__(message, *args, **kwargs)
+
+
+class InternalError(BaseError):
+    exc_info = None
+
+    def __init__(self, message=None, exc_info=True):
+        if message is None:
+            message = 'Internall error'
+        super(InternalError, self).__init__(message)
+        if exc_info:
+            self.exc_info = sys.exc_info()
 
 
 class ApplicationDataCorruptError(BaseError):
@@ -43,6 +56,13 @@ class InputDataSchemaValidationError(WrongInputDataError):
 
         super(WrongInputDataError, self).__init__(message, defects)
         self.defects = defects
+
+
+class BlockDeviceNotFoundError(BaseError):
+    def __init__(self, kind, needle):
+        super(BlockDeviceNotFoundError, self).__init__(
+            'Block device not found. Lookup details: '
+            'kind="{}", needle="{}"'.format(kind, needle))
 
 
 class BlockDeviceSchemeError(BaseError):

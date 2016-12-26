@@ -21,9 +21,77 @@ import re
 import string
 
 from bareon import errors
+from bareon.utils import hardware
 from bareon.utils import utils
 
 LOG = logging.getLogger(__name__)
+
+
+class DeviceFinder(object):
+    def __init__(self):
+        self.dev_list = []
+        self.dev_by_name = {}
+        self.dev_by_scsi = {}
+        self.dev_by_path = {}
+
+        disks = hardware.get_block_data_from_udev('disk')
+        partitions = hardware.get_block_data_from_udev('partition')
+        for dev in itertools.chain(disks, partitions):
+            record = hardware.get_device_info(dev, False)
+            if not record:
+                continue
+            self._parse(record)
+
+    def _parse(self, record):
+        dev = record['uspec']['DEVNAME']
+        record['scsi'] = hardware.scsi_address(dev)
+
+        self.dev_list.append(record)
+
+        self.dev_by_name[dev] = record
+        self.dev_by_name[self._cut_prefix(dev, '/dev/')] = record
+        self.dev_by_path[dev] = record
+
+        scsi_addr = record['scsi']
+        if scsi_addr:
+            self.dev_by_scsi[scsi_addr] = record
+
+        for p in record['uspec'].get('DEVLINKS', ()):
+            match_uuid = re.search(
+                r'disk/by-(:?part)?uuid/(?P<uuid>[!/]+)$', p)
+            if match_uuid:
+                # force lowercase uuids
+                uuid = match_uuid.groupdict()['uuid'].lower()
+                p = list(p.rpartition('/'))
+                p[-1] = uuid
+                p = ''.join(p)
+
+            self.dev_by_path[p] = record
+            self.dev_by_path[self._cut_prefix(p, '/dev/')] = record
+
+    def __call__(self, kind, needle):
+        try:
+            index = {
+                'name': self.dev_by_name,
+                'scsi': self.dev_by_scsi,
+                'path': self.dev_by_path
+            }[kind]
+        except KeyError:
+            raise errors.InternalError(
+                'Incorrect "kind" argument: {!r}'.format(kind), exc_info=False)
+
+        try:
+            result = index[needle]
+        except KeyError:
+            raise errors.BlockDeviceNotFoundError(kind, needle)
+        return result
+
+    @staticmethod
+    def _cut_prefix(subject, prefix):
+        start, dummy, end = subject.partition(prefix)
+        if start:
+            return subject
+        return end
 
 
 class SizeUnit(object):

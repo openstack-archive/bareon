@@ -15,6 +15,8 @@
 
 import unittest2
 
+import mock
+
 from bareon import errors
 from bareon.tests import utils
 from bareon.utils import block_device
@@ -22,6 +24,75 @@ from bareon.utils import block_device
 sector = 512
 KiB = 1024
 MiB = KiB * KiB
+
+
+class TestDeviceFinder(unittest2.TestCase):
+    _device_info = {
+        'sample0': {
+            'bspec': {'alignoff': '0',
+                      'iomin': '4096',
+                      'ioopt': '0',
+                      'maxsect': '2560',
+                      'pbsz': '4096',
+                      'ra': '256',
+                      'ro': '0',
+                      'size64': '1000204886016',
+                      'ss': '512',
+                      'sz': '1953525168'},
+            'device': '/dev/sda',
+            'espec': {'removable': '0',
+                      'state': 'running',
+                      'timeout': '30',
+                      'vendor': 'ATA'},
+            'uspec': {'DEVLINKS': ['/dev/disk/by-id/wwn-0x5000c50060fce0bf',
+                                   '/dev/disk/by-id/ata-ST1000DM003-1CH162_'
+                                   'S1D9PHQM'],
+                      'DEVNAME': '/dev/sda',
+                      'DEVPATH': '/devices/pci0000:00/0000:00:1f.2/ata1/host0'
+                                 '/target0:0:0/0:0:0:0/block/sda',
+                      'DEVTYPE': 'disk',
+                      'ID_BUS': 'ata',
+                      'ID_MODEL': 'ST1000DM003-1CH162',
+                      'ID_SERIAL_SHORT': 'S1D9PHQM',
+                      'ID_WWN': '0x5000c50060fce0bf',
+                      'MAJOR': '8',
+                      'MINOR': '0'}}}
+
+    def setUp(self):
+        super(TestDeviceFinder, self).setUp()
+
+        self.block_device_list = mock.Mock()
+        self.device_info = mock.Mock()
+
+        for path, m in (
+                ('bareon.utils.hardware.'
+                 'get_block_data_from_udev', self.block_device_list),
+                ('bareon.utils.hardware.'
+                 'get_device_info', self.device_info)):
+            patch = mock.patch(path, m)
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test(self):
+        self.block_device_list.side_effect = [
+            ['/dev/sda'],
+            []]
+        self.device_info.side_effect = [
+            self._device_info['sample0']]
+
+        finder = block_device.DeviceFinder()
+        for kind, needle in (
+                ('name', 'sda'),
+                ('name', '/dev/sda'),
+                ('path', 'disk/by-id/wwn-0x5000c50060fce0bf'),
+                ('path', '/dev/disk/by-id/wwn-0x5000c50060fce0bf')):
+            dev = finder(kind, needle)
+            self.assertEqual(dev['uspec']['DEVNAME'], '/dev/sda')
+
+        for kind, needle in (
+                ('name', '/dev/missing'),):
+            self.assertRaises(
+                errors.BlockDeviceNotFoundError, finder, kind, needle)
 
 
 class TestSizeUnit(unittest2.TestCase):
