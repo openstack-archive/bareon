@@ -32,6 +32,38 @@ from bareon.utils import utils
 LOG = logging.getLogger(__name__)
 
 
+class GDisk(object):
+    def __init__(self, dev):
+        self.dev = dev
+
+    def zap(self):
+        LOG.info('Erase block device "%s"', self.dev)
+        utils.execute('sgdisk', '--zap-all', self.dev)
+
+    def new(self, partition):
+        LOG.info(
+            'Create new partition %d:%d (0x%04x) on %s',
+            partition.begin, partition.end, partition.code, self.dev)
+        utils.execute(
+            'sgdisk', '--new={}:{}:{}'.format(
+                partition.index, partition.begin, partition.end), self.dev)
+        utils.execute('sgdisk', '--typecode={}:{:04x}'.format(
+            partition.index, partition.code), self.dev)
+        if partition.index < 5:
+            utils.execute('sgdisk', '--change-name={}:{}'.format(
+                partition.index, 'primary'), self.dev)
+
+        if partition.guid is not None:
+            guid = partition.guid
+            utils.execute('sgdisk', '--disk-guid={}'.format(guid))
+        else:
+            output = utils.execute(
+                'sgdisk', '--info', '{}'.format(partition.index),
+                self.dev)[0]
+            guid = _GDiskInfo(output).guid
+        return guid
+
+
 class DeviceFinder(object):
     def __init__(self):
         self.dev_list = []
@@ -832,6 +864,13 @@ class LVMSegment(AbstractSegment):
 
 class Partition(BlockDevicePayload):
     suffix_number = None
+
+    @classmethod
+    def new_by_disk_segment(cls, space, index, code):
+        block = _BlockDevice(
+            None, space.size, space.owner.block_size,
+            physical_block_size=space.owner.physical_block_size)
+        return cls(space.owner, block, space.begin, index, code)
 
     def __init__(self, disk, block, begin, index, code, guid=None,
                  attributes=0):
