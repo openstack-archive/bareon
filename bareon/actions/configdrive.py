@@ -22,6 +22,7 @@ from oslo_log import log as logging
 import six
 
 from bareon.actions import base
+from bareon.drivers.data import base as datadrivers
 from bareon import errors
 from bareon.utils import fs as fu
 from bareon.utils import utils
@@ -66,6 +67,8 @@ class ConfigDriveAction(base.BaseAction):
         pass
 
     def execute(self):
+        if not isinstance(self.driver, datadrivers.ConfigDriveDataDriverMixin):
+            return
         self.do_configdrive()
 
     def _make_configdrive_image(self, src_files):

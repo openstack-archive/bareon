@@ -223,7 +223,8 @@ PROVISION_SAMPLE_DATA = {
             ]
         },
         "mco_connector": "rabbitmq",
-        "mco_host": "10.20.0.2"
+        "mco_host": "10.20.0.2",
+        "mco_identity": 1
     },
     "name": "node-1",
     "hostname": "node-1.domain.tld",

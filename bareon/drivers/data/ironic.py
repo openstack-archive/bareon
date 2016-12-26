@@ -51,6 +51,7 @@ class Ironic(GenericDataDriver):
         super(Ironic, self).__init__(data)
         self._original_data = data
         convert_size(self.data['partitions'])
+        self.partitions_policy = self.data.get('partitions_policy', 'verify')
 
     @property
     def storage_claim(self):
@@ -95,21 +96,10 @@ class Ironic(GenericDataDriver):
         return True if len(self.get_image_ids()) > 1 else False
 
     @property
-    def is_configdrive_needed(self):
-        return False
-
-    @property
     def hw_partition_scheme(self):
         if not hasattr(self, '_hw_partition_scheme'):
             self._hw_partition_scheme = self._get_hw_partition_schema()
         return self._hw_partition_scheme
-
-    @property
-    def partitions_policy(self):
-        if not hasattr(self, '_partitions_policy'):
-            self._partitions_policy = self.data.get('partitions_policy',
-                                                    'verify')
-        return self._partitions_policy
 
     @property
     def root_on_lvm(self):
