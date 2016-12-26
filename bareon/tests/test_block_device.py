@@ -197,7 +197,7 @@ class TestSizeUnit(unittest2.TestCase):
             block_device.SizeUnit.new_by_string, '4', default_unit='unknown')
 
 
-class TestBlockDevice(unittest2.TestCase):
+class TestDisk(unittest2.TestCase):
     def test_disk_scan(self):
         expect = {
             'sample0': [
@@ -225,38 +225,47 @@ class TestBlockDevice(unittest2.TestCase):
                 ('sample0', '/dev/vda'),
                 ('sample1', '/dev/sda')):
             with utils.BlockDeviceMock(sample):
-                disk = block_device.Disk.new_by_device_scan(target)
+                disk = block_device.Disk.new_by_scan(target)
 
             actual = [
-                (p.index, p.begin, p.end, p.code, p.guid)
-                for p in disk.partitions]
+                (s.payload.index, s.begin, s.end, s.payload.code,
+                 s.payload.guid)
+                for s in disk.segments if s.kind == s.KIND_BUSY]
 
             self.assertEqual(expect[sample], actual)
 
     def test_allocate(self):
+        accuracy = block_device.SizeUnit(0, 'B')
         with utils.BlockDeviceMock('empty-1024MiB'):
             # disk use alignment 2048 sectors
-            disk = block_device.Disk.new_by_device_scan('/dev/loop0')
-            partitions = [
-                disk.allocate(size) for size in (
-                    (2048 - 512) * sector,
-                    2048 * 8 * sector,
-                    2048 * 8 * sector)]
+            disk = block_device.Disk.new_by_scan('/dev/loop0')
+            disk.allocate_accuracy = accuracy
+            for size, from_tail in (
+                    ((2048 - 512) * sector, False),
+                    (2048 * 8 * sector, False),
+                    ((2048 - 512) * sector, True),
+                    (2048 * 8 * sector, False),
+                    ((2048 - 512) * sector, True)):
+                disk.allocate(
+                    block_device.SizeUnit(size, 'B'), from_tail=from_tail)
 
         actual = [
-            (p.begin, p.end, p.size, p.index, p.code)
-            for p in partitions]
+            (s.begin, s.end, s.size)
+            for s in disk.segments if s.kind == s.KIND_BUSY]
 
         expect = [
-            (2048, 3583, 1536, None, None),
-            (4096, 20479, 16384, None, None),
-            (20480, 36863, 16384, None, None)]
+            (2048, 4095, 2048),
+            (4096, 20479, 16384),
+            (20480, 36863, 16384),
+            (2093056, 2095103, 2048),
+            (2095104, 2097118, 2015)]
 
         self.assertEqual(expect, actual)
 
     def test_allocate_no_space_left(self):
         with utils.BlockDeviceMock('empty-1024MiB'):
-            disk = block_device.Disk.new_by_device_scan('/dev/loop0')
+            disk = block_device.Disk.new_by_scan('/dev/loop0')
 
             self.assertRaises(
-                errors.BlockDeviceAllocationError, disk.allocate, 1024 * MiB)
+                errors.BlockDeviceAllocationError, disk.allocate,
+                block_device.SizeUnit(1024, 'MiB'))

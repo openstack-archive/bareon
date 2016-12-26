@@ -115,7 +115,7 @@ class TestPartitionUtils(unittest2.TestCase):
 
     @mock.patch.object(utils, 'udevadm_settle')
     @mock.patch.object(pu, 'reread_partitions')
-    @mock.patch('bareon.utils.block_device.Disk.new_by_device_scan')
+    @mock.patch('bareon.utils.block_device.Disk.new_by_scan')
     @mock.patch.object(utils, 'execute')
     def test_make_partition(self, mock_exec, mock_disk, mock_rerd, mock_udev):
         # should run parted OS command
@@ -137,7 +137,7 @@ class TestPartitionUtils(unittest2.TestCase):
 
     @mock.patch.object(utils, 'udevadm_settle')
     @mock.patch.object(pu, 'reread_partitions')
-    @mock.patch('bareon.utils.block_device.Disk.new_by_device_scan')
+    @mock.patch('bareon.utils.block_device.Disk.new_by_scan')
     @mock.patch.object(utils, 'execute')
     def test_make_partition_minimal(self, mock_exec, mock_disk, mock_rerd,
                                     mock_udev):
@@ -179,7 +179,7 @@ class TestPartitionUtils(unittest2.TestCase):
                           '/dev/fake', 200, 100, 'primary')
 
     # FIXME(dbogun): do this kind of test on utils.block_device.Disk level
-    @mock.patch('bareon.utils.block_device.Disk.new_by_device_scan')
+    @mock.patch('bareon.utils.block_device.Disk.new_by_scan')
     @mock.patch.object(utils, 'execute')
     def test_make_partition_overlaps_other_parts(
             self, mock_exec, disk_factory):
@@ -378,9 +378,9 @@ class TestPartitionUtils(unittest2.TestCase):
                     'flags': []
                 },
                 {
-                    'size': 745984,
+                    'size': 745472,
                     'begin': 1000204140544,
-                    'end': 1000204886527,
+                    'end': 1000204886015,
                     'fstype': 'free',
                     'master_dev': '/dev/sda'
                 }

@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
 import functools
 import itertools
 import logging
 import os
 import re
 import string
+
+import six
 
 from bareon import errors
 from bareon.utils import hardware
@@ -292,6 +295,106 @@ class SizeUnit(utils.EqualComparisonMixin, object):
         return value
 
 
+class FuzzyMatchSize(object):
+    def __init__(self, factor, size):
+        self.factor = factor
+        self.size = size
+
+    def __eq__(self, other):
+        if not isinstance(other, FuzzyMatchSize):
+            return NotImplemented
+        return self.size - self.factor < other.size < self.size + self.factor
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+@six.add_metaclass(abc.ABCMeta)
+class AbstractStorage(object):
+    block_size = 1
+    usable_size = 0
+    allocate_accuracy = SizeUnit(0, 'B')
+
+    @abc.abstractmethod
+    def calc_biggest_unallocated_chunk(self):
+        pass
+
+    @abc.abstractmethod
+    def allocate(self, size, from_tail=False):
+        pass
+
+    def blocks_to_sizeunit(self, value):
+        return SizeUnit(value * self.block_size, 'B')
+
+    def sizeunit_to_blocks(self, value):
+        blocks = value.bytes // self.block_size
+        blocks += int(value.bytes != blocks * self.block_size)
+        return blocks
+
+    def handle_is_service(self, segment):
+        usable_size = self.usable_size - segment.size
+        self.usable_size = max(usable_size, 0)
+
+
+class AbstractSegment(object):
+    _kind = itertools.count()
+    KIND_FREE = next(_kind)
+    KIND_RESERVED = next(_kind)
+    KIND_ALIGN = next(_kind)
+    KIND_BUSY = next(_kind)
+    del _kind
+
+    _kind_names = {
+        KIND_FREE: 'FREE',
+        KIND_RESERVED: 'RESERVED',
+        KIND_ALIGN: 'ALIGN',
+        KIND_BUSY: 'BUSY'
+    }
+
+    is_service = False
+    fuzzy_cmp_factor = False
+
+    def __init__(self, owner, kind, size, payload=None):
+        self.owner = owner
+        self.kind = kind
+        self.size = size
+        self.payload = payload
+
+        self._cmp_repr = self._make_cmp_repr()
+
+    def set_is_service(self):
+        if self.is_service:
+            return
+
+        self.is_service = True
+        self.owner.handle_is_service(self)
+
+    def set_fuzzy_cmp_factor(self, value):
+        self.fuzzy_cmp_factor = value
+        self._cmp_repr = self._make_cmp_repr()
+
+    def is_free(self):
+        return self.kind in (self.KIND_FREE, self.KIND_ALIGN)
+
+    def _make_cmp_repr(self):
+        return FuzzyMatchSize(self.fuzzy_cmp_factor, self.size), self.kind
+
+    def __repr__(self):
+        return '<{}({} {})>'.format(
+            type(self).__name__, self._kind_names[self.kind],
+            self.size)
+
+    def __eq__(self, other):
+        if not isinstance(other, AbstractSegment):
+            return NotImplemented
+        return self._cmp_repr == other._cmp_repr
+
+    def __ne__(self, other):
+        if not isinstance(other, AbstractSegment):
+            return NotImplemented
+        return self._cmp_repr != other._cmp_repr
+
+
 class BlockDevicePayload(object):
     def __init__(self, block, guid=None):
         self.block = block
@@ -322,12 +425,12 @@ class BlockDevicePayload(object):
         return self.block.is_bootable
 
 
-class Disk(BlockDevicePayload):
+class Disk(BlockDevicePayload, AbstractStorage):
     model = None
     table = None
 
     @classmethod
-    def new_by_device_scan(cls, dev):
+    def new_by_scan(cls, dev, partitions=True):
         output = utils.execute('sgdisk', '--print', dev)[0]
         disk_info = _GDiskPrint(output)
 
@@ -341,6 +444,9 @@ class Disk(BlockDevicePayload):
         elif disk_info.table_format == 'mbr':
             disk_args['sector_min'] = 64
         disk = cls(disk_block, disk_info.table_format, **disk_args)
+
+        if not partitions:
+            return disk
 
         for listing_info in disk_info.partitions:
             output = utils.execute(
@@ -366,101 +472,140 @@ class Disk(BlockDevicePayload):
         self.partition_table_format = partition_table_format
         self.alignment = alignment
 
-        self._space = [_DiskSpaceDescriptor(0, self.block.size)]
+        begin, end = 0, self.block.size - 1
+        self._space = [DiskSegment(self, begin, end)]
+        self.usable_size = self._space[0].size
 
         if sector_min:
-            self._mark_reserved(0, max(sector_min - 1, 0))
+            sector_min = max(sector_min - 1, begin)
+            if begin <= sector_min:
+                self._mark_reserved(begin, sector_min)
         if sector_max is not None:
-            self._mark_reserved(sector_max + 1, self.block.size)
+            sector_max = min(sector_max + 1, end)
+            if sector_max <= end:
+                self._mark_reserved(sector_max, end)
 
         self._align_free_blocks()
 
     @property
-    def partitions(self):
-        """Iterate over existing partitions.
-
-        Iterate over existing partitions (not free and not reserved segments)
-        """
-        for segment in self._space:
-            if segment.is_free():
-                continue
-            elif segment.kind == segment.KIND_RESERVED:
-                continue
-            yield segment.payload
-
-    @property
     def segments(self):
-        """Iterate over segments.
+        """Iterate over all(except reserved) segments
 
-        Iterate over all(except reserved) segments. Useful if someone is going
-        to analise existing free segments.
+        Useful if someone is going to analise existing free segments.
         """
         for segment in self._space:
             if segment.kind == segment.KIND_RESERVED:
                 continue
-            if segment.is_free():
-                yield EmptySpace(self, segment.begin, segment.end)
-            else:
-                yield segment.payload
+            yield segment
 
-    def allocate(self, size_bytes):
-        """Allocate new patition on device.
+    def calc_biggest_unallocated_chunk(self):
+        best_segment = None
+        for segment in self._space:
+            if segment.kind != segment.KIND_FREE:
+                continue
+            if best_segment is None:
+                best_segment = segment
+                continue
 
-        There is no any manipulation on real
-        disk. It change only internal disk representation. Use first free block
-        big enough to fit requested size. Raise BlockDeviceAllocationError if
-        there is no suitable free block.
+            if segment.size <= best_segment.size:
+                continue
 
-        :param size_bytes: required partition size in bytes
-        :type size_bytes: int
+            best_segment = segment
+
+        if best_segment is None:
+            raise errors.BlockDeviceAllocationError(
+                'There is no free segments on {}'.format(self))
+
+        return self.blocks_to_sizeunit(best_segment.size)
+
+    def allocate(self, size, from_tail=False):
+        """Allocate new partition on device.
+
+        There is no any manipulation on real disk. It change only internal disk
+        representation. Use first free block big enough to fit requested size.
+        Raise BlockDeviceAllocationError if there is no suitable free block.
+
+        :param size: required partition size in bytes
+        :type size: SizeUnit
+        :param from_tail: allocate from begin or from end of disk
+        :type from_tail: bool
         :return: created partition object
         :rtype: Partition
         """
-        size = size_bytes // self.block_size
-        size += int(size_bytes != size * self.block_size)
 
-        for idx, segment in enumerate(self._space):
+        accuracy = self.sizeunit_to_blocks(self.allocate_accuracy)
+        claim = self.sizeunit_to_blocks(size)
+        claim_min = max(claim - accuracy, 1)
+
+        space_sequence = enumerate(self._space)
+        if from_tail:
+            space_sequence = list(space_sequence)
+            space_sequence.reverse()
+
+        best_match = None
+        best_shortage = None
+        for idx, segment in space_sequence:
             if not segment.is_free():
                 continue
             if segment.kind == segment.KIND_ALIGN:
                 continue
-            if segment.size < size:
+            if segment.size < claim_min:
                 continue
 
-            replace, tail = segment.split(segment.begin + size)
+            shortage = max(claim - segment.size, 0)
+            if best_shortage is None:
+                best_match = idx
+                best_shortage = shortage
+            elif shortage < best_shortage:
+                best_match = idx
+                best_shortage = shortage
 
-            block = _BlockDevice(
-                None, replace.size, self.block_size, self.physical_block_size)
-            partition = Partition(self, block, replace.begin, None, None)
-            allocation = _DiskSpaceDescriptor(
-                replace.begin, replace.end, _DiskSpaceDescriptor.KIND_BUSY,
-                payload=partition)
+            if not shortage:
+                break
 
-            self._space[idx:idx + 1] = [
-                x for x in (allocation, tail) if not x.is_null()]
-            break
-        else:
+        if best_match is None:
             raise errors.BlockDeviceAllocationError(
-                'Unable to allocate {} sectors on {}'.format(size, self.dev))
+                'Unable to allocate {} sectors on {}'.format(claim, self.dev))
+
+        segment = self._space[best_match]
+
+        if from_tail:
+            split_point = segment.end - claim + 1
+            split_point = self._prev_aligned_block(split_point)
+            split_point = max(split_point, segment.begin)
+        else:
+            split_point = segment.begin + claim
+            split_point = self._next_aligned_block(split_point)
+            split_point = min(split_point, segment.end)
+
+        space = list(segment.split(split_point))
+        replace_idx = int(from_tail)
+
+        space[replace_idx] = replace = DiskSegment.new_replacement(
+            space[replace_idx], DiskSegment.KIND_BUSY)
+
+        self._space[best_match:best_match + 1] = [
+            x for x in space if not x.is_null()]
 
         self._align_free_blocks()
 
-        return partition
+        return replace
 
     def register(self, partition):
-        """Mark corresponding sectors as busy by received partitions.
+        """Register existing segment
 
-        Used during disk scan to build internal disk schema representation.
+        Mark corresponding sectors as busy by existing partition. Used during
+        disk scan to build internal disk schema representation.
 
         :param partition: existing partition
         :type partition: Partition
         """
         allocation = self._reserve(
-            partition.begin, partition.end, _DiskSpaceDescriptor.KIND_BUSY)
+            partition.begin, partition.end, DiskSegment.KIND_BUSY)
         allocation.payload = partition
 
     def _mark_reserved(self, begin, end):
-        self._reserve(begin, end, _DiskSpaceDescriptor.KIND_RESERVED)
+        self._reserve(begin, end, DiskSegment.KIND_RESERVED).set_is_service()
 
     def _reserve(self, begin, end, kind):
         intersect = []
@@ -496,7 +641,7 @@ class Disk(BlockDevicePayload):
                 'Failed to allocate rage {}:{} because of intersection with '
                 'existing allocations'.format(begin, end))
 
-        allocation = _DiskSpaceDescriptor(begin, end, kind)
+        allocation = DiskSegment(self, begin, end, kind)
         replace = [
             x for x in (
                 intersect[0].split(begin)[0],
@@ -517,19 +662,70 @@ class Disk(BlockDevicePayload):
             if segment.kind != segment.KIND_FREE:
                 continue
 
-            offset = self.alignment - segment.begin % self.alignment
-            if offset == self.alignment:
+            must_start_at = self._next_aligned_block(segment.begin)
+            if must_start_at == segment.begin:
                 continue
 
-            align, free = segment.split(segment.begin + offset)
+            align, free = segment.split(must_start_at)
             replace = [
-                _DiskSpaceDescriptor(align.begin, align.end, align.KIND_ALIGN),
+                DiskSegment.new_replacement(align, align.KIND_ALIGN),
                 free]
             replace_batch.append((idx, replace))
 
         replace_batch.reverse()
         for idx, replace in replace_batch:
             self._space[idx:idx + 1] = [x for x in replace if not x.is_null()]
+
+    def _prev_aligned_block(self, value):
+        follow = self._next_aligned_block(value)
+        if value != follow:
+            return follow - self.alignment
+        return value
+
+    def _next_aligned_block(self, value):
+        offset = self.alignment - value % self.alignment
+        if offset == self.alignment:
+            return value
+        return value + offset
+
+
+class DiskSegment(AbstractSegment):
+    @classmethod
+    def new_replacement(cls, space, kind, payload=None):
+        return cls(space.owner, space.begin, space.end, kind, payload=payload)
+
+    def __init__(self, disk, begin, end, kind=AbstractSegment.KIND_FREE,
+                 payload=None):
+        self.begin = begin
+        self.end = end
+
+        super(DiskSegment, self).__init__(disk, kind, end - begin + 1, payload)
+
+    def _make_cmp_repr(self):
+        value = [
+            FuzzyMatchSize(self.fuzzy_cmp_factor, x)
+            for x in (self.begin, self.end)]
+        value.append(self.kind)
+        return tuple(value)
+
+    def __repr__(self):
+        return '<{}({} {}:{})>'.format(
+            type(self).__name__, self._kind_names[self.kind],
+            self.begin, self.end)
+
+    def is_null(self):
+        return self.end + 1 == self.begin
+
+    def split(self, boundary):
+        if not self.is_free():
+            raise TypeError('Unsplittable item {!r}'.format(self))
+
+        cls = type(self)
+        left = cls(
+            self.owner, self.begin, boundary - 1, self.kind, self.payload)
+        right = cls(self.owner, boundary, self.end, self.kind, self.payload)
+
+        return left, right
 
 
 class Partition(BlockDevicePayload):
@@ -554,14 +750,6 @@ class Partition(BlockDevicePayload):
         if self.disk.dev[-1] in string.digits:
             return 'p' + name
         return name
-
-
-class EmptySpace(object):
-    def __init__(self, disk, begin, end):
-        self.disk = disk
-        self.begin = begin
-        self.end = end
-        self.size = (self.end - self.begin) + 1
 
 
 class _BlockDevice(object):
@@ -611,64 +799,6 @@ class _BlockDevice(object):
         records = (x.strip() for x in output.split(';'))
 
         return any('boot sector' in x for x in records)
-
-
-class _DiskSpaceDescriptor(object):
-    _idnr = itertools.count()
-    KIND_FREE = next(_idnr)
-    KIND_RESERVED = next(_idnr)
-    KIND_ALIGN = next(_idnr)
-    KIND_BUSY = next(_idnr)
-    del _idnr
-
-    _kind_names = {
-        KIND_FREE: 'FREE',
-        KIND_RESERVED: 'RESERVED',
-        KIND_ALIGN: 'ALIGN',
-        KIND_BUSY: 'BUSY'
-    }
-
-    def __init__(self, begin, end, kind=KIND_FREE, payload=None):
-        self.begin = begin
-        self.end = end
-        self.size = end - begin + 1
-        self.kind = kind
-        self.payload = payload
-
-        self._anchor = (self.begin, self.end, self.kind)
-
-    def __repr__(self):
-        return '<{}({} {}:{})>'.format(
-            type(self).__name__, self._kind_names[self.kind],
-            self.begin, self.end)
-
-    def __hash__(self):
-        return hash(self._anchor)
-
-    def __eq__(self, other):
-        if not isinstance(other, _DiskSpaceDescriptor):
-            return NotImplemented
-        return self._anchor == other._anchor
-
-    def __ne__(self, other):
-        if not isinstance(other, _DiskSpaceDescriptor):
-            return NotImplemented
-        return self._anchor != other._anchor
-
-    def is_free(self):
-        return self.kind in (self.KIND_FREE, self.KIND_ALIGN)
-
-    def is_null(self):
-        return self.end + 1 == self.begin
-
-    def split(self, boundary):
-        if not self.is_free():
-            raise TypeError('Unsplittable item {!r}'.format(self))
-
-        cls = type(self)
-        left = cls(self.begin, boundary - 1, self.kind, self.payload)
-        right = cls(boundary, self.end, self.kind, self.payload)
-        return left, right
 
 
 class _GDiskMessage(object):

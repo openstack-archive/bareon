@@ -32,7 +32,7 @@ TiB = GiB * 1024
 def scan_device(dev):
     utils.udevadm_settle()
 
-    disk = block_device.Disk.new_by_device_scan(dev)
+    disk = block_device.Disk.new_by_scan(dev)
 
     meta = {
         'dev': disk.dev,
@@ -49,37 +49,39 @@ def scan_device(dev):
             'end': segment.end * disk.block_size + disk.block_size - 1,
             'size': segment.size * disk.block_size
         }
-        if isinstance(segment, block_device.EmptySpace):
+        if segment.is_free():
             info['fstype'] = 'free'
-        elif isinstance(segment, block_device.Partition):
-            info['num'] = segment.index
-            info['name'] = segment.dev
-            info['guid'] = segment.guid
-            info['type'] = 'primary' if segment.index < 5 else 'logical'
+        elif isinstance(segment.payload, block_device.Partition):
+            partition = segment.payload
+            info['num'] = partition.index
+            info['name'] = partition.dev
+            info['guid'] = partition.guid
+            info['type'] = 'primary' if partition.index < 5 else 'logical'
 
             flags = set()
-            if segment.code == 0xEF02:
+            if partition.code == 0xEF02:
                 flags.add('bios_grub')
-            elif segment.code == 0xEF00:
+            elif partition.code == 0xEF00:
                 flags.add('boot')
-            elif segment.code == 0xFD00:
+            elif partition.code == 0xFD00:
                 flags.add('raid')
-            elif segment.code == 0x8E00:
+            elif partition.code == 0x8E00:
                 flags.add('lvm')
 
-            if segment.attributes & 0x04:
+            if partition.attributes & 0x04:
                 flags.add('legacy_boot')
 
             info['flags'] = sorted(flags)
 
-            lsblk_info = _partition_info_by_lsblk(segment.dev)
+            lsblk_info = _partition_info_by_lsblk(partition.dev)
 
-            # check that got correct device
+            # FIXME(dbogun): use udev to match partitions and real block dev
+            # check is this correct device
             size = lsblk_info.pop('size')
-            if size != segment.size * segment.block_size:
+            if size != partition.size * disk.block_size:
                 raise errors.BlockDeviceSchemeError(
                     'Partition schema for {} from gdisk don\'t match info '
-                    'from lsblk'.format(segment.dev))
+                    'from lsblk'.format(partition.dev))
 
             info.update({'fstype': None, 'uuid': None})  # defaults
             info.update(**lsblk_info)
@@ -199,8 +201,8 @@ def make_partition(dev, begin, end, ptype, alignment='optimal'):
         raise errors.WrongPartitionSchemeError(
             'Wrong boundaries: begin >= end')
 
-    disk = block_device.Disk.new_by_device_scan(dev)
-    partition = disk.allocate(end - begin + 1)
+    disk = block_device.Disk.new_by_scan(dev)
+    partition = disk.allocate(block_device.SizeUnit(end - begin + 1, 'B'))
 
     utils.udevadm_settle()
     out, err = utils.execute(
