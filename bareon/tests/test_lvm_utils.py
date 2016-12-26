@@ -77,25 +77,16 @@ class TestLvmUtils(unittest2.TestCase):
 
         expected_calls = [
             mock.call('pvcreate',
-                      '--metadatacopies', '1',
-                      '--metadatasize', '32m',
-                      '/dev/fake1',
-                      check_exit_code=[0]),
+                      '--metadatasize=32m',
+                      '--metadatacopies=1',
+                      '/dev/fake1'),
             mock.call('pvcreate',
-                      '--metadatacopies', '1',
-                      '--metadatasize', '64m',
-                      '/dev/fake2',
-                      check_exit_code=[0]),
+                      '--metadatacopies=1',
+                      '/dev/fake2'),
             mock.call('pvcreate',
-                      '--metadatacopies', '2',
-                      '--metadatasize', '32m',
-                      '/dev/fake3',
-                      check_exit_code=[0]),
-            mock.call('pvcreate',
-                      '--metadatacopies', '2',
-                      '--metadatasize', '64m',
-                      '/dev/fake4',
-                      check_exit_code=[0])
+                      '--metadatasize=32m',
+                      '/dev/fake3'),
+            mock.call('pvcreate', '/dev/fake4')
         ]
         self.assertEqual(mock_exec.call_args_list, expected_calls)
 
