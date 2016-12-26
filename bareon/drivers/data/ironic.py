@@ -15,8 +15,8 @@
 
 import collections
 import fnmatch
-import json
 import itertools
+import json
 import math
 import os
 
@@ -1019,3 +1019,94 @@ class StorageParser(object):
         idnr = objects.block_device.DevIdnr(idnr['type'], idnr['value'])
         idnr(self.disk_finder)
         return idnr
+
+
+class DeprecatedPartitionSchemaBuilder(object):
+    def __init__(self, storage_claim, multiboot_partition):
+        self.storage_claim = storage_claim
+        self.multiboot_partition = multiboot_partition
+
+        self.schema = objects.PartitionSchema()
+
+        self._convert()
+
+    def _convert(self):
+        for claim in self.storage_claim.items:
+            if isinstance(claim, objects.block_device.Disk):
+                self._convert_disk(claim)
+            elif isinstance(claim, objects.block_device.LVMvg):
+                self._convert_lvm_vg(claim)
+            elif isinstance(claim, objects.block_device.MDRaid):
+                self._convert_mdraid(claim)
+
+    def _convert_disk(self, disk):
+        old_disk = self.schema.add_parted(
+            name=disk.dev, label='gpt', install_bootloader=True,
+            size=self._unpack_size(disk.size).bytes)
+
+        for claim in disk.items:
+            args = {}
+            if isinstance(claim, objects.block_device.Partition):
+                args['keep_data'] = claim.keep_data_flag
+            partition = old_disk.add_partition(
+                size=self._unpack_size(claim.size).bytes, guid=claim.guid,
+                **args)
+
+            if isinstance(claim, objects.block_device.FileSystemMixin):
+                self._add_fs(claim, partition.name)
+
+    def _convert_lvm_vg(self, vg):
+        self.schema.add_vg(name=vg.idnr)
+        for claim in vg.items:
+            if isinstance(claim, objects.block_device.LVMpv):
+                args = {}
+                if claim.meta_size:
+                    args['metadatasize'] = self._unpack_size(
+                        claim.meta_size).in_unit('MiB').value_int
+                self.schema.add_pv(name=claim.vg_idnr, **args)
+            elif isinstance(claim, objects.block_device.LVMlv):
+                self.schema.add_lv(
+                    name=claim.name, vgname=vg.idnr,
+                    size=self._unpack_size(claim.size).bytes)
+                self._add_fs(claim, claim.name)
+
+    def _convert_mdraid(self, md):
+        self.schema.add_md(
+            name=md.name, level=md.level, devices=[
+                x.expected_dev for x in md.items])
+        self._add_fs(md, md.name)
+
+    def _add_fs(self, claim, dev):
+        mount = claim.mount
+        if claim is self.multiboot_partition:
+            mount = 'multiboot'
+
+        if not mount:
+            return
+
+        args = {k: v for k, v in (
+            ('fstab_options', claim.mount_options),
+            ('fs_type', claim.file_system),
+            ('os_id', list(claim.os_binding))) if v}
+
+        self.schema.add_fs(
+            device=dev, mount=mount, fstab_enabled=claim.fstab_member, **args)
+
+    @staticmethod
+    def _unpack_size(size):
+        return size.size
+
+    @staticmethod
+    def guid_code_to_parted_flags(code):
+        flags = set()
+
+        if code == 0xEF02:
+            flags.add('bios_grub')
+        elif code == 0xEF00:
+            flags.add('boot')
+        elif code == 0xFD00:
+            flags.add('raid')
+        elif code == 0x8E00:
+            flags.add('lvm')
+
+        return sorted(flags)
