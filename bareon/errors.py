@@ -63,6 +63,8 @@ class BlockDeviceNotFoundError(BaseError):
         super(BlockDeviceNotFoundError, self).__init__(
             'Block device not found. Lookup details: '
             'kind="{}", needle="{}"'.format(kind, needle))
+        self.kind = kind
+        self.needle = needle
 
 
 class BlockDeviceSchemeError(BaseError):

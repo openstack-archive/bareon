@@ -147,7 +147,22 @@ class SpaceClaim(utils.EqualComparisonMixin, object):
         self.kind = kind
 
     def __call__(self, storage, from_tail=False):
-        raise NotImplementedError
+        if self.kind == self.KIND_EXACT:
+            segment = storage.allocate(self.size, from_tail=from_tail)
+        elif self.kind == self.KIND_PERCENTAGE:
+            usable_size = storage.usable_size
+            usable_size = storage.blocks_to_sizeunit(usable_size)
+            percent = usable_size.bytes // 100
+            size = self.size.value_int * percent
+            size = SizeUnit(size, 'B')
+            segment = storage.allocate(size, from_tail=from_tail)
+        elif self.kind == self.KIND_BIGGEST:
+            usable_size = storage.calc_biggest_unallocated_chunk()
+            segment = storage.allocate(usable_size, from_tail=from_tail)
+        else:
+            raise errors.InternalError(exc_info=False)
+
+        return segment
 
     def __repr__(self):
         return '<{} {}:{!r}>'.format(
