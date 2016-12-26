@@ -52,15 +52,19 @@ def pvdisplay_parse(output):
     return pvs
 
 
-def pvcreate(pvname, metadatasize=64, metadatacopies=2):
+def pvcreate(pvname, metadatasize=None, metadatacopies=None):
     # check if pv already exists
     if get_first_by_key_value(pvdisplay(), 'name', pvname, False):
         raise errors.PVAlreadyExistsError(
             'Error while creating pv: pv %s already exists' % pvname)
-    utils.execute('pvcreate',
-                  '--metadatacopies', str(metadatacopies),
-                  '--metadatasize', str(metadatasize) + 'm',
-                  pvname, check_exit_code=[0])
+
+    cmd = ['pvcreate']
+    if metadatasize is not None:
+        cmd.append('--metadatasize={}m'.format(metadatasize))
+    if metadatacopies is not None:
+        cmd.append('--metadatacopies={}'.format(metadatacopies))
+    cmd.append(pvname)
+    utils.execute(*cmd)
 
 
 def pvremove(pvname):
