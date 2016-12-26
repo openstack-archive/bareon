@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import traceback
 
 
 class BaseError(Exception):
@@ -22,14 +23,24 @@ class BaseError(Exception):
 
 
 class InternalError(BaseError):
-    exc_info = None
-
     def __init__(self, message=None, exc_info=True):
         if message is None:
             message = 'Internall error'
-        super(InternalError, self).__init__(message)
         if exc_info:
             self.exc_info = sys.exc_info()
+            message += '\nOriginal exception {}'.format(
+                ''.join(traceback.format_exception(*self.exc_info)))
+
+        super(InternalError, self).__init__(message)
+
+
+class DataSchemaCorruptError(InternalError):
+    def __init__(self, message=None, **kwargs):
+        if message is None:
+            message = (
+                'Integrity error in data processed by data validator. This '
+                'mean an error in data validation scheme or in parsing code.')
+        super(DataSchemaCorruptError, self).__init__(message, **kwargs)
 
 
 class ApplicationDataCorruptError(BaseError):

@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
+import collections
 import fnmatch
+import json
+import itertools
 import math
 import os
 
@@ -24,6 +26,7 @@ from oslo_log import log as logging
 from bareon.drivers.data.generic import GenericDataDriver
 from bareon import errors
 from bareon import objects
+from bareon.utils import block_device
 from bareon.utils import hardware as hu
 from bareon.utils import partition as pu
 from bareon.utils import utils
@@ -46,7 +49,12 @@ class Ironic(GenericDataDriver):
 
     def __init__(self, data):
         super(Ironic, self).__init__(data)
+        self._original_data = data
         convert_size(self.data['partitions'])
+
+    @property
+    def storage_claim(self):
+        return StorageParser(self._original_data, self.image_scheme).claim
 
     def _get_image_meta(self):
         pass
@@ -640,7 +648,7 @@ def _set_vg_sizes(vgs, disks):
     for disk in disks:
         pvs += [vol for vol in disk['volumes'] if vol['type'] == 'pv']
 
-    vg_sizes = defaultdict(int)
+    vg_sizes = collections.defaultdict(int)
     for pv in pvs:
         vg_sizes[pv['vg']] += pv['size'] - pv.get(
             'lvm_meta_size', DEFAULT_LVM_META_SIZE)
@@ -699,10 +707,11 @@ def _resolve_sizes(spaces, retain_space_size=True):
         claimed_space, unsized_volume = _process_space_claims(space)
         taken_space += claimed_space
         delta = space_size - taken_space
+        delta_MiB = utils.B2MiB(abs(delta))
         if delta < 0:
             raise ValueError('Sum of requested filesystem sizes exceeds space '
                              'available on {type} "{id}" by {delta} '
-                             'MiB'.format(delta=abs(delta), type=space['type'],
+                             'MiB'.format(delta=delta_MiB, type=space['type'],
                                           id=_get_disk_id(space)))
         elif unsized_volume:
             ref = (unsized_volume['mount'] if unsized_volume.get(
@@ -710,7 +719,7 @@ def _resolve_sizes(spaces, retain_space_size=True):
             if delta:
                 LOG.info('Claiming remaining {delta} MiB for {ref} '
                          'volume/partition on {type} {id}.'
-                         ''.format(delta=abs(delta),
+                         ''.format(delta=delta_MiB,
                                    type=space['type'],
                                    id=_get_disk_id(space),
                                    ref=ref))
@@ -724,7 +733,7 @@ def _resolve_sizes(spaces, retain_space_size=True):
                         ref=ref))
         else:
             LOG.info('{delta} MiB of unclaimed space remains on {type} "{id}" '
-                     'after completing allocations.'.format(delta=abs(delta),
+                     'after completing allocations.'.format(delta=delta_MiB,
                                                             type=space['type'],
                                                             id=_get_disk_id(
                                                                 space)))
@@ -749,3 +758,264 @@ def convert_string_sizes(data, target=None):
             else:
                 data[k] = convert_string_sizes(v, target=target)
     return data
+
+
+class StorageParser(object):
+    def __init__(self, data, image_schema):
+        self.storage = objects.block_device.StorageSubsystem()
+        self.disk_finder = block_device.DeviceFinder()
+
+        operation_systems = self._collect_operation_systems(image_schema)
+        self._existing_os_binding = set(operation_systems)
+        self._default_os_binding = operation_systems[:1]
+
+        self.mdfs_by_mount = {}
+        self.mddev_by_mount = collections.defaultdict(list)
+        self.lvm_pv_reference = collections.defaultdict(list)
+
+        LOG.debug('--- Preparing partition scheme ---')
+        LOG.debug('Looping over all disks in provision data')
+        try:
+            self.claim = self._parse(data)
+        except KeyError:
+            raise errors.DataSchemaCorruptError()
+
+        self._assemble_lvm_vg()
+        self._assemble_mdraid()
+        self._validate()
+
+    def _collect_operation_systems(self, image_schema):
+        return [image.os_id for image in image_schema.images]
+
+    def _parse(self, data):
+        for raw in data['partitions']:
+            kind = raw['type']
+            if kind == 'disk':
+                item = self._parse_disk(raw)
+            elif kind == 'vg':
+                item = self._parse_lvm_vg(raw)
+            else:
+                raise errors.DataSchemaCorruptError(exc_info=False)
+
+            self.storage.add(item)
+
+    def _assemble_lvm_vg(self):
+        vg_by_id = {
+            i.idnr: i for i in self.storage.items_by_kind(
+                objects.block_device.LVMvg)}
+
+        defined_vg = set(vg_by_id)
+        referred_vg = set(self.lvm_pv_reference)
+        empty_vg = defined_vg - referred_vg
+        orphan_pv = referred_vg - defined_vg
+
+        if empty_vg:
+            raise errors.WrongInputDataError(
+                'Following LVMvg have no any PV: "{}"'.format(
+                    '", "'.join(sorted(empty_vg))))
+        if orphan_pv:
+            raise errors.WrongInputDataError(
+                'Following LVMpv refer to missing VG: "{}"'.format(
+                    '", "'.join(sorted(orphan_pv))))
+
+        for idnr in defined_vg:
+            vg = vg_by_id[idnr]
+            for pv in self.lvm_pv_reference[idnr]:
+                vg.add(pv)
+
+    def _assemble_mdraid(self):
+        name_template = '/dev/md{:d}'
+
+        idx = itertools.count()
+        for mount in sorted(self.mddev_by_mount):
+            components = self.mddev_by_mount[mount]
+
+            fields = self.mdfs_by_mount[mount]
+            try:
+                name = fields.pop('name')
+                if not name.startswith('/dev/'):
+                    name = '/dev/{}'.format(name)
+            except KeyError:
+                name = name_template.format(next(idx))
+
+            md = objects.block_device.MDRaid(name, **fields)
+            for item in components:
+                md.add(item)
+
+            self.storage.add(md)
+
+    def _validate(self):
+        for item in self.storage.items:
+            if isinstance(item, objects.block_device.Disk):
+                self._validate_disk(item)
+            elif isinstance(item, objects.block_device.LVMvg):
+                self._validate_lvm_vg(item)
+
+    def _validate_disk(self, disk):
+        remaining = []
+        for item in disk.items:
+            if item.size.kind != item.size.KIND_BIGGEST:
+                continue
+            remaining.append(item)
+
+        if len(remaining) < 2:
+            return
+
+        raise errors.WrongInputDataError(
+            'Multiple requests on "remaining" space.\n'
+            'disk:\n{}\npartitions:\n{}'.format(disk.idnr, '\n'.join(
+                repr(x) for x in remaining)))
+
+    def _validate_lvm_vg(self, vg):
+        remaining = []
+        for item in vg.items_by_kind(objects.block_device.LVMlv):
+            if item.size.kind != item.size.KIND_BIGGEST:
+                continue
+            remaining.append(item)
+
+        if len(remaining) < 2:
+            return
+
+        raise errors.WrongInputDataError(
+            'Multiple requests on "remaining" space.\n'
+            'lvm-vg: {}\nlogical volumes:\n{}'.format(vg.idnr, '\n'.join(
+                repr(x) for x in remaining)))
+
+    def _parse_disk(self, data):
+        size = self._size(data['size'])
+        idnr = self._disk_id(data['id'])
+        disk = objects.block_device.Disk(
+            idnr, size, **self._get_fields(data, 'name'))
+
+        for raw in data['volumes']:
+            kind = raw['type']
+            if kind == 'pv':
+                item = self._parse_lvm_pv(raw)
+            elif kind == 'raid':
+                item = self._parse_mdraid_dev(raw)
+            elif kind == 'partition':
+                item = self._parse_disk_partition(raw)
+            elif kind == 'boot':
+                item = self._parse_disk_partition(raw)
+                item.is_boot = True
+            # FIXME(dbogun): unsupported but allowed by data-schema type
+            elif kind == 'lvm_meta_pool':
+                item = None
+            else:
+                raise errors.DataSchemaCorruptError(exc_info=False)
+
+            if item is not None:
+                disk.add(item)
+
+        return disk
+
+    def _parse_lvm_vg(self, data):
+        vg = objects.block_device.LVMvg(
+            data['id'], **self._get_fields(
+                data, 'label', 'min_size', 'keep_data', '_allocate_size'))
+        for raw in data['volumes']:
+            item = self._parse_lvm_lv(raw)
+            vg.add(item)
+
+        return vg
+
+    def _parse_lvm_pv(self, data):
+        size = self._size(data['size'])
+        fields = self._get_fields(data, 'keep_data', 'lvm_meta_size')
+        if 'lvm_meta_size' in fields:
+            fields['lvm_meta_size'] = self._size(fields['lvm_meta_size'])
+        pv = objects.block_device.LVMpv(data['vg'], size, **fields)
+
+        self.lvm_pv_reference[pv.vg_idnr].append(pv)
+
+        return pv
+
+    def _parse_mdraid_dev(self, data):
+        fields = self._get_filesystem_fields(data, 'name')
+        size = fields.pop('size')
+        mddev = objects.block_device.MDDev(size)
+
+        mount = fields['mount']
+        self.mdfs_by_mount.setdefault(mount, fields)
+        self.mddev_by_mount[mount].append(mddev)
+
+        return mddev
+
+    def _parse_disk_partition(self, data):
+        fields = self._get_filesystem_fields(data, 'disk_label')
+        self._rename_fields(fields, {'disk_label': 'label'})
+        if fields.get('file_system') == 'swap':
+            fields['guid_code'] = 0x8200
+        size = fields.pop('size')
+        return objects.block_device.Partition(size, **fields)
+
+    def _parse_lvm_lv(self, data):
+        fields = self._get_filesystem_fields(data)
+        size = fields.pop('size')
+        return objects.block_device.LVMlv(data['name'], size, **fields)
+
+    def _get_filesystem_fields(self, data, *extra):
+        fields = self._get_fields(
+            data,
+            'mount', 'keep_data', 'file_system', 'size', 'images',
+            'fstab_options', 'fstab_enabled', *extra)
+        self._rename_fields(fields, {
+            'fstab_enabled': 'fstab_member',
+            'fstab_options': 'mount_options',
+            'images': 'os_binding'})
+
+        fields.setdefault('os_binding', self._default_os_binding)
+        fields['size'] = self._size(fields['size'])
+
+        if 'mount' in fields:
+            if fields['mount'].lower() == 'none':
+                fields.pop('mount')
+        if 'file_system' in fields:
+            fields['file_system'] = fields['file_system'].lower()
+
+        fields['os_binding'] = set(fields['os_binding'])
+        missing = fields['os_binding'] - self._existing_os_binding
+        if missing:
+            # FIXME(dbogun): it must be treated as error
+            LOG.warn(
+                'Try to claim not existing operating systems: '
+                '"{}"\n\n{}'.format(
+                    '", "'.join(sorted(missing)),
+                    json.dumps(data, indent=2)))
+            fields['os_binding'] -= missing
+
+        return fields
+
+    @staticmethod
+    def _get_fields(data, *fields):
+        result = {}
+        for f in fields:
+            try:
+                result[f] = data[f]
+            except KeyError:
+                pass
+        return result
+
+    @staticmethod
+    def _rename_fields(data, mapping):
+        for src in mapping:
+            try:
+                value = data.pop(src)
+            except KeyError:
+                continue
+            data[mapping[src]] = value
+
+    @staticmethod
+    def _size(size):
+        if size == 'remaining':
+            result = block_device.SpaceClaim.new_biggest()
+        else:
+            result = block_device.SizeUnit.new_by_string(
+                size, default_unit='MiB')
+            result = block_device.SpaceClaim.new_by_sizeunit(result)
+        return result
+
+    def _disk_id(self, idnr):
+        idnr = objects.block_device.DevIdnr(idnr['type'], idnr['value'])
+        idnr(self.disk_finder)
+        return idnr
