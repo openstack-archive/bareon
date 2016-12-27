@@ -16,6 +16,7 @@
 
 set -e
 
+NO_DIB=1
 if [ -n ${NO_DIB:-""} ] ; then
     echo "================== NO_DIB passed. Skipping image build. =================="
     exit 0
