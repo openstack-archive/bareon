@@ -1,0 +1,10 @@
+Code-Review+1: Ha Van Tu <tuhv@vn.fujitsu.com>
+Code-Review+1: Bogun Dmitriy <dbogun@mirantis.com>
+Code-Review+2: Evgeniy L <eli@mirantis.com>
+Workflow+1: Evgeniy L <eli@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 28 Dec 2016 22:48:09 +0000
+Reviewed-on: https://review.openstack.org/377149
+Project: openstack/bareon
+Branch: refs/heads/master
