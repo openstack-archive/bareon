@@ -115,7 +115,8 @@ Number  Start   End     Size    File system  Name     Flags
         utils.assertNoDiff(expected, actual)
 
     def test_provision_rsync(self):
-        DEPLOY_DRIVER = 'rsync'
+        self.env.deploy_driver = 'rsync'
+
         deploy_conf = {
             "images": [
                 {
@@ -124,7 +125,7 @@ Number  Start   End     Size    File system  Name     Flags
                     "target": "/",
                     "image_pull_url": self.env.get_url_for_image(
                         'centos-7.1.1503.fpa_func_test.raw',
-                        DEPLOY_DRIVER),
+                        self.env.deploy_driver),
                 }
             ],
             "partitions_policy": "clean",
@@ -156,7 +157,7 @@ Number  Start   End     Size    File system  Name     Flags
         node = self.env.node
 
         node.run_cmd('bareon-provision --data_driver ironic '
-                     '--deploy_driver %s' % DEPLOY_DRIVER,
+                     '--deploy_driver %s' % self.env.deploy_driver,
                      check_ret_code=True,
                      get_bareon_log=True)
 
@@ -192,9 +193,9 @@ Number  Start   End     Size    File system  Name     Flags
 
 class MultipleProvisioningTestCase(tests_functional.TestCase):
     def test_multiple_provisioning(self):
-        DEPLOY_DRIVER = 'swift'
+        self.env.deploy_driver = 'swift'
         image_url = self.env.get_url_for_image(
-            "centos-7.1.1503.fpa_func_test.raw", DEPLOY_DRIVER)
+            "centos-7.1.1503.fpa_func_test.raw", self.env.deploy_driver)
 
         deploy_conf = {
             "images": [
@@ -255,7 +256,7 @@ class MultipleProvisioningTestCase(tests_functional.TestCase):
         node = self.env.node
 
         node.run_cmd('bareon-provision --data_driver ironic '
-                     '--deploy_driver %s' % DEPLOY_DRIVER,
+                     '--deploy_driver %s' % self.env.deploy_driver,
                      check_ret_code=True,
                      get_bareon_log=True)
 

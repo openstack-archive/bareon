@@ -128,11 +128,10 @@ is included with the distribution media.
 
     def test_verify_policy_match(self):
         deploy_conf = {
-            "images": self.images,
             "partitions": self.golden_image_schema,
             "partitions_policy": "verify"
         }
-
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
@@ -164,11 +163,10 @@ is included with the distribution media.
             "size": "2000"
         })
         deploy_conf = {
-            "images": self.images,
             "partitions": self.golden_image_schema,
             "partitions_policy": "verify"
         }
-
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
@@ -189,15 +187,13 @@ is included with the distribution media.
         self._assert_vdb_equal_to_goldenimage(node)
 
     def test_verify_policy_mismatch_extra_partition_on_hw(self):
-        last_partition = self.golden_image_schema[0]['volumes'][-1]
-        self.golden_image_schema[0]['volumes'].remove(last_partition)
+        self.golden_image_schema[0]['volumes'].pop()
 
         deploy_conf = {
-            "images": self.images,
             "partitions": self.golden_image_schema,
             "partitions_policy": "verify"
         }
-
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
@@ -223,11 +219,10 @@ is included with the distribution media.
         usr_partition['keep_data'] = False
 
         deploy_conf = {
-            "images": self.images,
             "partitions": self.golden_image_schema,
             "partitions_policy": "verify"
         }
-
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
@@ -253,14 +248,6 @@ is included with the distribution media.
 
     def test_clean_policy(self):
         deploy_conf = {
-            "images": [
-                {
-                    "name": "test",
-                    "boot": True,
-                    "target": "/",
-                    "image_pull_url": "",
-                }
-            ],
             "partitions": [
                 {
                     "type": "disk",
@@ -286,6 +273,7 @@ is included with the distribution media.
             "partitions_policy": "clean"
         }
 
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
@@ -328,14 +316,6 @@ Number  Start  End    Size   File system  Flags
         # NotEnoughSpaceError: Partition scheme for: /dev/vdb exceeds the size
         # of the disk. Scheme size is 150 MB, and disk size is 106.303488 MB.
         deploy_conf = {
-            "images": [
-                {
-                    "name": "test",
-                    "boot": True,
-                    "target": "/",
-                    "image_pull_url": "",
-                }
-            ],
             "partitions": [
                 {
                     "type": "disk",
@@ -361,6 +341,7 @@ Number  Start  End    Size   File system  Flags
             "partitions_policy": "clean"
         }
 
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
