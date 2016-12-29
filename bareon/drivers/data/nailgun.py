@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import itertools
 import math
 import os
@@ -24,6 +25,7 @@ from six.moves.urllib.parse import urlparse
 from six.moves.urllib.parse import urlsplit
 import yaml
 
+from bareon.utils import block_device
 from bareon.utils import hardware as hu
 from bareon.utils import utils
 
@@ -355,6 +357,10 @@ class Nailgun(BaseDataDriver,
                     and v.get("mount") != "/boot"
             )):
                 continue
+
+            disk = copy.deepcopy(disk)
+            self._convert_size_unit(disk, 'size', 'min_size', 'free_space')
+
             LOG.debug('Processing disk %s' % disk['name'])
             LOG.debug('Adding gpt table on disk %s' % disk['name'])
             parted = partition_scheme.add_parted(
@@ -367,11 +373,13 @@ class Nailgun(BaseDataDriver,
             # legacy boot partition
             LOG.debug('Adding bios_grub partition on disk %s: size=24' %
                       disk['name'])
-            parted.add_partition(size=24, flags=['bios_grub'])
+            size = block_device.SizeUnit(24, 'MiB').bytes
+            parted.add_partition(size=size, flags=['bios_grub'])
             # uefi partition (for future use)
             LOG.debug('Adding UEFI partition on disk %s: size=200' %
                       disk['name'])
-            parted.add_partition(size=200)
+            size = block_device.SizeUnit(200, 'MiB').bytes
+            parted.add_partition(size=size)
 
             LOG.debug('Looping over all volumes on disk %s' % disk['name'])
             for volume in disk['volumes']:
@@ -384,6 +392,8 @@ class Nailgun(BaseDataDriver,
                     LOG.debug('Volume size is zero. Skipping.')
                     continue
 
+                self._convert_size_unit(volume, 'size', 'lvm_meta_size')
+
                 if volume.get('name') == 'cephjournal':
                     LOG.debug('Volume seems to be a CEPH journal volume. '
                               'Special procedure is supposed to be applied.')
@@ -394,9 +404,10 @@ class Nailgun(BaseDataDriver,
 
                     # No more than 10GB will be allocated to a single journal
                     # partition
-                    size = volume["size"] / ratio
-                    if size > 10240:
-                        size = 10240
+                    size = block_device.SizeUnit(volume['size'], 'B')
+                    count = size.in_unit('MiB').value / ratio
+                    if count > 10240:
+                        size = block_device.SizeUnit(10, 'GiB')
 
                     # This will attempt to evenly spread partitions across
                     # multiple devices e.g. 5 osds with 2 journal devices will
@@ -413,7 +424,7 @@ class Nailgun(BaseDataDriver,
                             LOG.debug('Adding CEPH journal partition on '
                                       'disk %s: size=%s' %
                                       (disk['name'], size))
-                            prt = parted.add_partition(size=size)
+                            prt = parted.add_partition(size=size.bytes)
                             LOG.debug('Partition name: %s' % prt.name)
                             if 'partition_guid' in volume:
                                 LOG.debug('Setting partition GUID: %s' %
@@ -430,9 +441,10 @@ class Nailgun(BaseDataDriver,
                             keep_data=volume.get('keep_data', False))
                         LOG.debug('Partition name: %s' % prt.name)
 
-                    elif volume.get('mount') == '/boot' \
-                            and not self._boot_partition_done \
-                            and disk in self.boot_disks:
+                    elif (volume.get('mount') == '/boot'
+                            and not self._boot_partition_done
+                            and disk['name'] in
+                            [d['name'] for d in self.boot_disks]):
                         LOG.debug('Adding /boot partition on disk %s: '
                                   'size=%s', disk['name'], volume['size'])
                         prt = parted.add_partition(
@@ -466,7 +478,10 @@ class Nailgun(BaseDataDriver,
                 if volume['type'] == 'pv':
                     LOG.debug('Creating pv on partition: pv=%s vg=%s' %
                               (prt.name, volume['vg']))
-                    lvm_meta_size = volume.get('lvm_meta_size', 64)
+                    lvm_meta_size = block_device.SizeUnit(64, 'MiB').bytes
+                    lvm_meta_size = volume.get('lvm_meta_size', lvm_meta_size)
+                    lvm_meta_size = block_device.SizeUnit(lvm_meta_size, 'B')
+                    lvm_meta_size = lvm_meta_size.in_unit('MiB')
                     # The reason for that is to make sure that
                     # there will be enough space for creating logical volumes.
                     # Default lvm extension size is 4M. Nailgun volume
@@ -479,15 +494,17 @@ class Nailgun(BaseDataDriver,
                     # logical volume. Besides, parted aligns partitions
                     # according to its own algorithm and actual partition might
                     # be a bit smaller than integer number of mebibytes.
-                    if lvm_meta_size < 10:
+                    if lvm_meta_size.value < 10:
                         raise errors.WrongPartitionSchemeError(
                             'Error while creating physical volume: '
                             'lvm metadata size is too small')
-                    metadatasize = int(math.floor((lvm_meta_size - 8) / 2))
+                    metadatasize = int(
+                        math.floor((lvm_meta_size.value - 8) / 2))
+                    metadatasize = block_device.SizeUnit(metadatasize, 'MiB')
                     metadatacopies = 2
                     partition_scheme.vg_attach_by_name(
                         pvname=prt.name, vgname=volume['vg'],
-                        metadatasize=metadatasize,
+                        metadatasize=metadatasize.bytes,
                         metadatacopies=metadatacopies)
 
                 if volume['type'] == 'raid':
@@ -526,7 +543,8 @@ class Nailgun(BaseDataDriver,
                     (self._is_root_disk(disk) or self._is_os_disk(disk))):
                 LOG.debug('Adding configdrive partition on disk %s: size=20' %
                           disk['name'])
-                parted.add_partition(size=20, configdrive=True)
+                size = block_device.SizeUnit(20, 'MiB').bytes
+                parted.add_partition(size=size, configdrive=True)
 
         # checking if /boot is expected to be created
         if self._have_boot_partition(self.ks_disks) and \
@@ -544,12 +562,16 @@ class Nailgun(BaseDataDriver,
         for vg in self.ks_vgs:
             LOG.debug('Processing vg %s' % vg['id'])
             LOG.debug('Looping over all logical volumes in vg %s' % vg['id'])
+
+            vg = copy.deepcopy(vg)
+            self._convert_size_unit(vg, 'size', 'min_size', 'free_space')
             for volume in vg['volumes']:
                 LOG.debug('Processing lv %s' % volume['name'])
                 if volume['size'] <= 0:
                     LOG.debug('LogicalVolume size is zero. Skipping.')
                     continue
 
+                self._convert_size_unit(volume, 'size', 'lvm_meta_size')
                 if volume['type'] == 'lv':
                     LOG.debug('Adding lv to vg %s: name=%s, size=%s' %
                               (vg['id'], volume['name'], volume['size']))
@@ -721,6 +743,15 @@ class Nailgun(BaseDataDriver,
             raise errors.WrongInputDataError(
                 'Invalid partition schema: You must specify at least one '
                 'disk.')
+
+    @staticmethod
+    def _convert_size_unit(record, *fields):
+        for key in fields:
+            try:
+                value = record[key]
+            except KeyError:
+                continue
+            record[key] = block_device.SizeUnit(value, 'MiB').bytes
 
 
 class Ironic(Nailgun):

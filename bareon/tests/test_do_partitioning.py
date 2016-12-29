@@ -22,6 +22,7 @@ from bareon.actions import partitioning
 from bareon.drivers.data import nailgun
 from bareon import objects
 from bareon.tests import test_nailgun
+from bareon.utils import block_device as bd
 from bareon.utils import utils
 
 if six.PY2:
@@ -116,21 +117,59 @@ class TestPartitioningAction(unittest2.TestCase):
                          mock_pu.make_label.call_args_list)
 
         mock_pu_mp_expected_calls = [
-            mock.call('/dev/sda', 1, 24, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 25, 224, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 225, 424, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 425, 624, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 625, 20062, 'primary', alignment='optimal'),
-            mock.call('/dev/sda', 20063, 65659, 'primary',
-                      alignment='optimal'),
-            mock.call('/dev/sda', 65660, 65679, 'primary',
-                      alignment='optimal'),
-            mock.call('/dev/sdb', 1, 24, 'primary', alignment='optimal'),
-            mock.call('/dev/sdb', 25, 224, 'primary', alignment='optimal'),
-            mock.call('/dev/sdb', 225, 65195, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 1, 24, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 25, 224, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 225, 65195, 'primary', alignment='optimal')]
+            mock.call('/dev/sda',
+                      1,
+                      bd.SizeUnit(24, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sda',
+                      bd.SizeUnit(24, 'MiB').bytes + 1,
+                      bd.SizeUnit(224, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sda',
+                      bd.SizeUnit(224, 'MiB').bytes + 1,
+                      bd.SizeUnit(424, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sda',
+                      bd.SizeUnit(424, 'MiB').bytes + 1,
+                      bd.SizeUnit(624, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sda',
+                      bd.SizeUnit(624, 'MiB').bytes + 1,
+                      bd.SizeUnit(20062, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sda',
+                      bd.SizeUnit(20062, 'MiB').bytes + 1,
+                      bd.SizeUnit(65659, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sda',
+                      bd.SizeUnit(65659, 'MiB').bytes + 1,
+                      bd.SizeUnit(65679, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdb',
+                      1,
+                      bd.SizeUnit(24, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdb',
+                      bd.SizeUnit(24, 'MiB').bytes + 1,
+                      bd.SizeUnit(224, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdb',
+                      bd.SizeUnit(224, 'MiB').bytes + 1,
+                      bd.SizeUnit(65195, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdc',
+                      1,
+                      bd.SizeUnit(24, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdc',
+                      bd.SizeUnit(24, 'MiB').bytes + 1,
+                      bd.SizeUnit(224, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdc',
+                      bd.SizeUnit(224, 'MiB').bytes + 1,
+                      bd.SizeUnit(65195, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+        ]
         self.assertEqual(mock_pu_mp_expected_calls,
                          mock_pu.make_partition.call_args_list)
 
@@ -158,9 +197,9 @@ class TestPartitioningAction(unittest2.TestCase):
         self.assertEqual(mock_lu_v_expected_calls,
                          mock_lu.vgcreate.call_args_list)
 
-        mock_lu_l_expected_calls = [mock.call('os', 'root', 1),
-                                    mock.call('os', 'swap', 1),
-                                    mock.call('image', 'glance', 1)]
+        mock_lu_l_expected_calls = [mock.call('os', 'root', 15360),
+                                    mock.call('os', 'swap', 4014),
+                                    mock.call('image', 'glance', 175347)]
         self.assertEqual(mock_lu_l_expected_calls,
                          mock_lu.lvcreate.call_args_list)
 
@@ -253,19 +292,40 @@ class TestManagerMultipathPartition(unittest2.TestCase):
             mock.call('/dev/sdc', 'gpt')])
 
         self.assertEqual(mock_pu.make_partition.mock_calls, [
-            mock.call('/dev/mapper/12312', 1, 24, 'primary',
-                      alignment='optimal'),
-            mock.call('/dev/mapper/12312', 25, 224, 'primary',
-                      alignment='optimal'),
-            mock.call('/dev/mapper/12312', 225, 424, 'primary',
-                      alignment='optimal'),
-            mock.call('/dev/mapper/12312', 425, 624, 'primary',
-                      alignment='optimal'),
-            mock.call('/dev/mapper/12312', 625, 644, 'primary',
-                      alignment='optimal'),
-            mock.call('/dev/sdc', 1, 24, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 25, 224, 'primary', alignment='optimal'),
-            mock.call('/dev/sdc', 225, 424, 'primary', alignment='optimal')])
+            mock.call('/dev/mapper/12312',
+                      1,
+                      bd.SizeUnit(24, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/mapper/12312',
+                      bd.SizeUnit(24, 'MiB').bytes + 1,
+                      bd.SizeUnit(224, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/mapper/12312',
+                      bd.SizeUnit(224, 'MiB').bytes + 1,
+                      bd.SizeUnit(424, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/mapper/12312',
+                      bd.SizeUnit(424, 'MiB').bytes + 1,
+                      bd.SizeUnit(624, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/mapper/12312',
+                      bd.SizeUnit(624, 'MiB').bytes + 1,
+                      bd.SizeUnit(644, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+
+            mock.call('/dev/sdc',
+                      1,
+                      bd.SizeUnit(24, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdc',
+                      bd.SizeUnit(24, 'MiB').bytes + 1,
+                      bd.SizeUnit(224, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+            mock.call('/dev/sdc',
+                      bd.SizeUnit(224, 'MiB').bytes + 1,
+                      bd.SizeUnit(424, 'MiB').bytes,
+                      'primary', alignment='optimal'),
+        ])
 
         self.assertEqual(mock_pu.set_partition_flag.mock_calls, [
             mock.call('/dev/mapper/12312', 1, 'bios_grub'),
