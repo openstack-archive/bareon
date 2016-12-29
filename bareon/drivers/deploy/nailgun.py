@@ -115,17 +115,9 @@ opts = [
     )
 ]
 
-cli_opts = [
-    cfg.StrOpt(
-        'image_build_dir',
-        default='/tmp',
-        help='Directory where the image is supposed to be built',
-    ),
-]
-
 CONF = cfg.CONF
 CONF.register_opts(opts)
-CONF.register_cli_opts(cli_opts)
+CONF.import_opt('image_build_dir', 'bareon.cmd.agent')
 CONF.import_opt('mpath_lvm_preferred_names', 'bareon.actions.bootloader')
 CONF.import_opt('lvm_conf_path', 'bareon.actions.bootloader')
 
