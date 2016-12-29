@@ -56,9 +56,15 @@ cli_opts = [
         default='/tmp/config-drive.img',
         help='Path where to store generated config drive image',
     ),
+    cfg.StrOpt(
+        'image_build_dir',
+        default='/tmp',
+        help='Directory where the image is supposed to be built',
+    ),
 ]
 
 CONF = cfg.CONF
+CONF.register_cli_opts(cli_opts)
 LOG = logging.getLogger(__name__)
 PROJECT = "bareon"
 
@@ -145,7 +151,6 @@ def main(actions=None):
 
     # Setup logging and process configuration options
     logging.register_options(CONF)
-    CONF.register_cli_opts(cli_opts)
     CONF(sys.argv[1:], project=PROJECT,
          version=version.version_info.release_string())
     logging.setup(CONF, PROJECT)
