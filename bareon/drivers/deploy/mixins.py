@@ -53,7 +53,7 @@ class MountableMixin(object):
             mtab_path = os.path.join(mount_dir, 'etc/mtab')
             if os.path.islink(mtab_path):
                 os.remove(mtab_path)
-            with open(mtab_path, 'wt', encoding='utf-8') as f:
+            with open(mtab_path, 'wt') as f:
                 f.write(six.text_type(mtab))
 
     def _umount_target(self, mount_dir, os_id=None, pseudo=True):
