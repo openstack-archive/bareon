@@ -43,8 +43,7 @@ class TestMountableMixin(unittest2.TestCase):
         mock_os.path.join.side_effect = lambda x, y: "%s/%s" % (x, y)
         mock_utils.execute.return_value = (None, None)
         self.mxn._mount_target('fake_chroot')
-        mock_open.assert_called_once_with('fake_chroot/etc/mtab', 'wt',
-                                          encoding='utf-8')
+        mock_open.assert_called_once_with('fake_chroot/etc/mtab', 'wt')
         mock_os.path.islink.assert_called_once_with('fake_chroot/etc/mtab')
         mock_os.remove.assert_called_once_with('fake_chroot/etc/mtab')
 
@@ -99,8 +98,7 @@ none /run/shm tmpfs rw,nosuid,nodev 0 0"""
                          mock_fu.mount_bind.call_args_list)
         file_handle = mock_open.return_value.__enter__.return_value
         file_handle.write.assert_called_once_with(fake_mtab)
-        mock_open.assert_called_once_with('fake_chroot/etc/mtab', 'wt',
-                                          encoding='utf-8')
+        mock_open.assert_called_once_with('fake_chroot/etc/mtab', 'wt')
         mock_os.path.islink.assert_called_once_with('fake_chroot/etc/mtab')
         self.assertFalse(mock_os.remove.called)
 
