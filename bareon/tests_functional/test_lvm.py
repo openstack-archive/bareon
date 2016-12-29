@@ -21,14 +21,6 @@ from bareon import tests_functional
 class LvmTestCase(tests_functional.TestCase):
     def test_multi_volume_multi_group(self):
         deploy_conf = {
-            "images": [
-                {
-                    "name": "test",
-                    "boot": True,
-                    "target": "/",
-                    "image_pull_url": "",
-                }
-            ],
             "partitions_policy": "clean",
             "partitions": [
                 {
@@ -117,6 +109,7 @@ class LvmTestCase(tests_functional.TestCase):
                 }
             ]
         }
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="two_disks.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
@@ -169,14 +162,6 @@ BYT;
 
     def test_mixed_partitions_and_lvs(self):
         deploy_conf = {
-            "images": [
-                {
-                    "name": "test",
-                    "boot": True,
-                    "target": "/",
-                    "image_pull_url": "",
-                }
-            ],
             "partitions_policy": "clean",
             "partitions": [
                 {
@@ -251,6 +236,8 @@ BYT;
                 }
             ]
         }
+
+        self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="two_disks.xml",
                        deploy_config=deploy_conf)
         node = self.env.node
