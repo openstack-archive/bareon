@@ -17,6 +17,8 @@ import json
 import utils
 import uuid
 
+import pkg_resources
+
 from bareon import tests_functional
 
 
@@ -177,18 +179,40 @@ Number  Start   End     Size    File system  Name     Flags
 
         utils.assertNoDiff(expected, actual)
 
+        node.run_cmd('mount /dev/vda2 /tmp/target')
+        node.run_cmd('mount /dev/vda3 /tmp/target/usr')
+        try:
+            self.upload_ssh_key(node, 'root')
+        finally:
+            node.run_cmd('umount /tmp/target/usr')
+            node.run_cmd('umount /tmp/target')
+
         node.reboot_to_hdd()
         node.wait_for_boot()
 
         # Set node.ssh_key to "path to tenant key"
         # (if tenant key is different than deploy key)
-        node.ssh_login = "centos"
         actual = node.run_cmd('uname -a')[0]
         expected = ('Linux fpa-func-test-tenant-vm 3.10.0-229.20.1.el7.x86_64'
                     ' #1 SMP Tue Nov 3 19:10:07 UTC 2015 x86_64 x86_64 x86_64'
                     ' GNU/Linux\n')
 
         utils.assertNoDiff(expected, actual)
+
+    def upload_ssh_key(self, node, user):
+        script = pkg_resources.resource_filename(
+            __name__, 'node_helper/put-ssh-key.sh')
+
+        key = node.ssh_key
+        key = '{}.pub'.format(key)
+
+        node.put_file(script, '/tmp/put-ssh-key.sh')
+        node.run_cmd('chmod u+x /tmp/put-ssh-key.sh', check_ret_code=True)
+        node.put_file(key, '/tmp/ssh-key.pub')
+
+        node.run_cmd(
+            '/tmp/put-ssh-key.sh "{user}" /tmp/ssh-key.pub /tmp/target'.format(
+                user=user), check_ret_code=True)
 
 
 class MultipleProvisioningTestCase(tests_functional.TestCase):
