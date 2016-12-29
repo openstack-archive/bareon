@@ -193,7 +193,7 @@ class PartitioningAction(base.BaseAction):
 
         # creating physical volumes
         for pv in self.driver.partition_scheme.pvs:
-            lu.pvcreate(pv.name, metadatasize=pv.metadatasize,
+            lu.pvcreate(pv.name, metadatasize=utils.B2MiB(pv.metadatasize),
                         metadatacopies=pv.metadatacopies)
 
         # creating volume groups
