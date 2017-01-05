@@ -1,0 +1,8 @@
+Code-Review+2: Bogun Dmitriy <dbogun@mirantis.com>
+Workflow+1: Bogun Dmitriy <dbogun@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 05 Jan 2017 12:28:38 +0000
+Reviewed-on: https://review.openstack.org/415207
+Project: openstack/bareon
+Branch: refs/heads/master
