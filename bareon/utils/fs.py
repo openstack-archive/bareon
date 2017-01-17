@@ -14,9 +14,9 @@
 
 import os
 import tempfile
-import uuid
 
 from oslo_log import log as logging
+from oslo_utils import uuidutils
 
 from bareon import errors
 from bareon.utils import utils
@@ -101,7 +101,7 @@ def mount_fs(fs_type, fs_dev, fs_mount, opts=None):
 
 # TODO(oberezovskyi): add xfs support
 def change_uuid(fs_dev):
-    new_uuid = str(uuid.uuid4())
+    new_uuid = str(uuidutils.generate_uuid())
     utils.execute('tune2fs', fs_dev, '-U', new_uuid, check_exit_code=False)
 
 

@@ -22,13 +22,13 @@ import signal as sig
 import stat
 import tempfile
 import time
-import uuid
 
 import signal
 import six
 import yaml
 
 from oslo_log import log as logging
+from oslo_utils import uuidutils
 
 from bareon import errors
 from bareon.utils import fs as fu
@@ -588,7 +588,8 @@ def make_targz(source_dir, output_name=None):
     or an absolute path
      """
     if not output_name:
-        output_name = six.text_type(uuid.uuid4()) + '.tar.gz'
+        output_name = \
+            six.text_type(uuidutils.generate_uuid()) + '.tar.gz'
     utils.makedirs_if_not_exists(os.path.dirname(output_name))
 
     LOG.info('Creating archive: %s', output_name)
@@ -745,10 +746,12 @@ def run_mksquashfs(chroot, output_name=None, compression_algorithm='xz'):
     3)move result files to dstdir
     """
     if not output_name:
-        output_name = 'root.squashfs' + six.text_type(uuid.uuid4())
+        output_name = 'root.squashfs' + \
+                      six.text_type(uuidutils.generate_uuid())
     utils.makedirs_if_not_exists(os.path.dirname(output_name))
     dstdir = os.path.dirname(output_name)
-    temp = '.mksquashfs.tmp.' + six.text_type(uuid.uuid4())
+    temp = '.mksquashfs.tmp.' + \
+           six.text_type(uuidutils.generate_uuid())
     s_dst = os.path.join(chroot, 'mnt/dst')
     s_src = os.path.join(chroot, 'mnt/src')
     try:

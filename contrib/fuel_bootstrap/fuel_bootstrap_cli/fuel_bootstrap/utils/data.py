@@ -18,11 +18,12 @@ import copy
 import os
 import re
 import six
-import uuid
 
 from fuel_bootstrap import consts
 from fuel_bootstrap import errors
 from fuel_bootstrap import settings
+
+from oslo_utils import uuidutils
 
 CONF = settings.Configuration()
 
@@ -30,7 +31,7 @@ CONF = settings.Configuration()
 class BootstrapDataBuilder(object):
 
     def __init__(self, data):
-        self.uuid = six.text_type(uuid.uuid4())
+        self.uuid = six.text_type(uuidutils.generate_uuid())
 
         self.container_format = consts.COMPRESSED_CONTAINER_FORMAT
         if data.get('no_compress'):
