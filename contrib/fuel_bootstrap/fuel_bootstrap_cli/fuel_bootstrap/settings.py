@@ -27,7 +27,7 @@ class Configuration(object):
             config_file = consts.CONFIG_FILE
         if os.path.exists(config_file):
             with open(config_file) as f:
-                data = yaml.load(f)
+                data = yaml.safe_load(f)
         else:
             raise errors.ConfigFileNotExists(
                 "Default config couldn't be found in {0}"

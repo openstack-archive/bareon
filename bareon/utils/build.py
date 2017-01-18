@@ -835,7 +835,7 @@ def dump_runtime_uuid(uuid, config):
     utils.makedirs_if_not_exists(os.path.dirname(config))
     if os.path.isfile(config):
         with open(config, 'r') as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
     data['runtime_uuid'] = uuid
     LOG.debug('Save runtime_uuid:%s to file: %s', uuid, config)
     with open(config, 'wt') as f:
