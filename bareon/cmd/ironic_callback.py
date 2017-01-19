@@ -32,7 +32,7 @@ def main():
 
     There are three mandatory parameters in kernel command line.
     Ironic prepares these two:
-    'api-url' - URL of Ironic API service,
+    'ironic_api_url' - URL of Ironic API service,
     'deployment_id' - UUID of the node in Ironic.
     Passed from PXE boot loader:
     'BOOTIF' - MAC address of the boot interface,
@@ -42,11 +42,11 @@ def main():
     BOOTIF=01-88-99-aa-bb-cc-dd
     """
     kernel_params = utils.parse_kernel_cmdline()
-    api_url = kernel_params.get('api-url')
+    api_url = kernel_params.get('ironic_api_url')
     deployment_id = kernel_params.get('deployment_id')
     if api_url is None or deployment_id is None:
-        _process_error('Mandatory parameter ("api-url" or "deployment_id") is '
-                       'missing.')
+        _process_error('Mandatory parameter ("ironic_api_url" or '
+                       '"deployment_id") is missing.')
 
     bootif = kernel_params.get('BOOTIF')
     if bootif is None:
