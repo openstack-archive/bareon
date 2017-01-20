@@ -463,13 +463,12 @@ class DeprecatedPartitionSchemeBuilder(object):
             name=disk.dev, label='gpt', install_bootloader=True,
             disk_size=self._unpack_size(disk.size).bytes)
 
-        for claim in disk.items:
+        for claim, size_bytes in self._resolve_size_claims(disk):
             args = {}
             if isinstance(claim, objects.block_device.Partition):
                 args['keep_data'] = claim.keep_data_flag
             partition = old_disk.add_partition(
-                size=self._unpack_size(claim.size).bytes, guid=claim.guid,
-                **args)
+                size=size_bytes, guid=claim.guid, **args)
 
             if isinstance(claim, objects.block_device.FileSystemMixin):
                 self._add_fs(claim, partition.name)
@@ -510,6 +509,40 @@ class DeprecatedPartitionSchemeBuilder(object):
 
         self.schema.add_fs(
             device=dev, mount=mount, fstab_enabled=claim.fstab_member, **args)
+
+    @classmethod
+    def _resolve_size_claims(cls, disk):
+        one_percent = cls._unpack_size(disk.size).bytes // 100
+        remaining_idx = None
+
+        size_used = 0
+        allocations = []
+        for claim in disk.items:
+            size = claim.size
+            if size.kind == size.KIND_EXACT:
+                size_bytes = cls._unpack_size(size).bytes
+            elif size.kind == size.KIND_PERCENTAGE:
+                size_bytes = cls._unpack_size(size).value_int * one_percent
+            elif size.kind == size.KIND_BIGGEST:
+                if remaining_idx is not None:
+                    raise errors.WrongInputDataError(
+                        'Multiple requests on "remaining" space.')
+                size_bytes = None
+            else:
+                raise errors.InternalError(exc_info=False)
+
+            if size_bytes is None:
+                remaining_idx = len(allocations)
+            else:
+                size_used += size_bytes
+            allocations.append((claim, size_bytes))
+
+        if remaining_idx is not None:
+            size_bytes = cls._unpack_size(disk.size).bytes - size_used
+            claim = allocations[remaining_idx][0]
+            allocations[remaining_idx] = claim, size_bytes
+
+        return allocations
 
     @staticmethod
     def _unpack_size(size):
