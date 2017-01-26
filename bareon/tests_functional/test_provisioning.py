@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import json
 import utils
 import uuid
 
-import pkg_resources
 
 from bareon import tests_functional
 
 
 class SingleProvisioningTestCase(tests_functional.TestCase):
+    node_ssh_login = 'centos'
+
     def test_provision_two_disks_swift(self):
         DEPLOY_DRIVER = 'swift'
         deploy_conf = {
@@ -101,15 +104,11 @@ Number  Start   End     Size    File system  Name     Flags
 """
 
         utils.assertNoDiff(expected, actual)
-        node.run_cmd('mount /dev/vda2 /tmp/target')
-        node.run_cmd('mount /dev/vda3 /tmp/target/usr')
-        try:
-            self.upload_ssh_key(node, 'root')
-        finally:
-            node.run_cmd('umount /tmp/target/usr')
-            node.run_cmd('umount /tmp/target')
+
+        self._update_cloud_conf(node)
 
         node.reboot_to_hdd()
+        node.ssh_login = self.node_ssh_login
         node.wait_for_boot()
 
         # Set node.ssh_key to "path to tenant key"
@@ -184,15 +183,10 @@ Number  Start   End     Size    File system  Name     Flags
 
         utils.assertNoDiff(expected, actual)
 
-        node.run_cmd('mount /dev/vda2 /tmp/target')
-        node.run_cmd('mount /dev/vda3 /tmp/target/usr')
-        try:
-            self.upload_ssh_key(node, 'root')
-        finally:
-            node.run_cmd('umount /tmp/target/usr')
-            node.run_cmd('umount /tmp/target')
+        self._update_cloud_conf(node, part='vda2')
 
         node.reboot_to_hdd()
+        node.ssh_login = self.node_ssh_login
         node.wait_for_boot()
 
         # Set node.ssh_key to "path to tenant key"
@@ -204,20 +198,17 @@ Number  Start   End     Size    File system  Name     Flags
 
         utils.assertNoDiff(expected, actual)
 
-    def upload_ssh_key(self, node, user):
-        script = pkg_resources.resource_filename(
-            __name__, 'node_helper/put-ssh-key.sh')
-
-        key = node.ssh_key
-        key = '{}.pub'.format(key)
-
-        node.put_file(script, '/tmp/put-ssh-key.sh')
-        node.run_cmd('chmod u+x /tmp/put-ssh-key.sh', check_ret_code=True)
-        node.put_file(key, '/tmp/ssh-key.pub')
-
-        node.run_cmd(
-            '/tmp/put-ssh-key.sh "{user}" /tmp/ssh-key.pub /tmp/target'.format(
-                user=user), check_ret_code=True)
+    def _update_cloud_conf(self, node, part='vda2'):
+        # Update the cloud config in the tenant image to contain the
+        # correct SSH public key. Normally this would be done from Ironic
+        # using deploy actions, or as part of cloud init.
+        cloud_cfg_path = os.path.join(node.workdir, "cloud.cfg")
+        node.put_file(cloud_cfg_path, '/tmp/cloud.cfg')
+        node.run_cmd('mkdir /tmp/{0}'.format(part))
+        node.run_cmd('mount -t ext4 /dev/{0} /tmp/{0}'.format(part))
+        node.run_cmd('cp -f /tmp/cloud.cfg /tmp/{0}/etc/cloud/cloud.cfg'
+                     .format(part))
+        node.run_cmd('umount /tmp/{0}'.format(part))
 
 
 class MultipleProvisioningTestCase(tests_functional.TestCase):
