@@ -153,19 +153,17 @@ is included with the distribution media.
         self._assert_vdb_equal_to_goldenimage(node)
 
     def test_verify_policy_mismatch_extra_partition_in_schema(self):
-        self.golden_image_schema[0]["volumes"].append({
-            "images": [
-                "test"
-            ],
+        deploy_conf = {
+            "partitions": self.golden_image_schema[:],
+            "partitions_policy": "verify"
+        }
+        deploy_conf['partitions'][0]['volumes'].append({
+            "images": ["test"],
             "mount": "/tmp",
             "type": "partition",
             "file_system": "ext3",
             "size": "2000"
         })
-        deploy_conf = {
-            "partitions": self.golden_image_schema,
-            "partitions_policy": "verify"
-        }
         self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
@@ -187,12 +185,12 @@ is included with the distribution media.
         self._assert_vdb_equal_to_goldenimage(node)
 
     def test_verify_policy_mismatch_extra_partition_on_hw(self):
-        self.golden_image_schema[0]['volumes'].pop()
-
         deploy_conf = {
-            "partitions": self.golden_image_schema,
+            "partitions": self.golden_image_schema[:],
             "partitions_policy": "verify"
         }
+        deploy_conf['partitions'][0]['volumes'].pop()
+
         self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
@@ -214,14 +212,14 @@ is included with the distribution media.
         self._assert_vdb_equal_to_goldenimage(node)
 
     def test_verify_policy_match_and_clean_one_of_filesystems(self):
-        usr_partition = self.golden_image_schema[0]['volumes'][2]
-        self.assertEqual('/usr', usr_partition['mount'])
-        usr_partition['keep_data'] = False
-
         deploy_conf = {
-            "partitions": self.golden_image_schema,
+            "partitions": self.golden_image_schema[:],
             "partitions_policy": "verify"
         }
+        usr_partition = deploy_conf['partitions'][0]['volumes'][2]
+        usr_partition['keep_data'] = False
+        self.assertEqual('/usr', usr_partition['mount'])
+
         self.env.patch_config_images(deploy_conf, 'test')
         self.env.setup(node_template="data_retention.xml",
                        deploy_config=deploy_conf)
