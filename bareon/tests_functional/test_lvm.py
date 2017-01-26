@@ -28,12 +28,12 @@ class LvmTestCase(tests_functional.TestCase):
                     "type": "disk",
                     "volumes": [
                         {
-                            "vg": "fpa_test_vg_1",
+                            "vg": "rft_test_vg_1",
                             "type": "pv",
                             "size": "2000"
                         },
                         {
-                            "vg": "fpa_test_vg_2",
+                            "vg": "rft_test_vg_2",
                             "type": "pv",
                             "size": "976"  # 1000 - 24 (GRUB stage 1.5)
                         }
@@ -48,7 +48,7 @@ class LvmTestCase(tests_functional.TestCase):
                             "images": [
                                 "test"
                             ],
-                            "vg": "fpa_test_vg_2",
+                            "vg": "rft_test_vg_2",
                             "type": "pv",
                             "size": "1976"  # 2000 - 24 (GRUB stage 1.5)
                         },
@@ -56,14 +56,14 @@ class LvmTestCase(tests_functional.TestCase):
                 },
                 {
                     "type": "vg",
-                    "id": "fpa_test_vg_1",
+                    "id": "rft_test_vg_1",
                     "volumes": [
                         {
                             "images": [
                                 "test"
                             ],
                             "type": "lv",
-                            "name": "fpa_root_vol",
+                            "name": "rft_root_vol",
                             "mount": "/",
                             "size": "1000",
                             "file_system": "ext4"
@@ -73,7 +73,7 @@ class LvmTestCase(tests_functional.TestCase):
                                 "test"
                             ],
                             "type": "lv",
-                            "name": "fpa_var_vol",
+                            "name": "rft_var_vol",
                             "mount": "/var",
                             "size": "936",  # (2000-1000)- 1*64 (lvm meta)
                             "file_system": "ext3"
@@ -82,14 +82,14 @@ class LvmTestCase(tests_functional.TestCase):
                 },
                 {
                     "type": "vg",
-                    "id": "fpa_test_vg_2",
+                    "id": "rft_test_vg_2",
                     "volumes": [
                         {
                             "images": [
                                 "test"
                             ],
                             "type": "lv",
-                            "name": "fpa_usr_vol",
+                            "name": "rft_usr_vol",
                             "mount": "/usr",
                             "size": "2000",
                             "file_system": "ext4"
@@ -99,7 +99,7 @@ class LvmTestCase(tests_functional.TestCase):
                                 "test"
                             ],
                             "type": "lv",
-                            "name": "fpa_etc_vol",
+                            "name": "rft_etc_vol",
                             "mount": "/etc",
                             "size": "824",  # (976+1976)-2000-2*64 (lvm meta)
                             "file_system": "ext3"
@@ -121,19 +121,19 @@ class LvmTestCase(tests_functional.TestCase):
         actual = node.run_cmd('parted -lm && pvs && lvs')[0]
         expected = """
 BYT;
-/dev/mapper/fpa_test_vg_2-fpa_etc_vol:864MB:dm:512:512:loop:Linux device-mapper (linear):;
+/dev/mapper/rft_test_vg_2-rft_etc_vol:864MB:dm:512:512:loop:Linux device-mapper (linear):;
 1:0.00B:864MB:864MB:ext3::;
 
 BYT;
-/dev/mapper/fpa_test_vg_2-fpa_usr_vol:2097MB:dm:512:512:loop:Linux device-mapper (linear):;
+/dev/mapper/rft_test_vg_2-rft_usr_vol:2097MB:dm:512:512:loop:Linux device-mapper (linear):;
 1:0.00B:2097MB:2097MB:ext4::;
 
 BYT;
-/dev/mapper/fpa_test_vg_1-fpa_var_vol:981MB:dm:512:512:loop:Linux device-mapper (linear):;
+/dev/mapper/rft_test_vg_1-rft_var_vol:981MB:dm:512:512:loop:Linux device-mapper (linear):;
 1:0.00B:981MB:981MB:ext3::;
 
 BYT;
-/dev/mapper/fpa_test_vg_1-fpa_root_vol:1049MB:dm:512:512:loop:Linux device-mapper (linear):;
+/dev/mapper/rft_test_vg_1-rft_root_vol:1049MB:dm:512:512:loop:Linux device-mapper (linear):;
 1:0.00B:1049MB:1049MB:ext4::;
 
 BYT;
@@ -148,14 +148,14 @@ BYT;
 2:26.2MB:2098MB:2072MB::primary:lvm;
 
   PV         VG            Fmt  Attr PSize   PFree
-  /dev/vda2  fpa_test_vg_1 lvm2 a--    1.95g  60.00m
-  /dev/vda3  fpa_test_vg_2 lvm2 a--  972.00m 120.00m
-  /dev/vdb2  fpa_test_vg_2 lvm2 a--    1.93g      0
+  /dev/vda2  rft_test_vg_1 lvm2 a--    1.95g  60.00m
+  /dev/vda3  rft_test_vg_2 lvm2 a--  972.00m 120.00m
+  /dev/vdb2  rft_test_vg_2 lvm2 a--    1.93g      0
   LV           VG            Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
-  fpa_root_vol fpa_test_vg_1 -wi-a----- 1000.00m
-  fpa_var_vol  fpa_test_vg_1 -wi-a-----  936.00m
-  fpa_etc_vol  fpa_test_vg_2 -wi-a-----  824.00m
-  fpa_usr_vol  fpa_test_vg_2 -wi-a-----    1.95g
+  rft_root_vol rft_test_vg_1 -wi-a----- 1000.00m
+  rft_var_vol  rft_test_vg_1 -wi-a-----  936.00m
+  rft_etc_vol  rft_test_vg_2 -wi-a-----  824.00m
+  rft_usr_vol  rft_test_vg_2 -wi-a-----    1.95g
 """""  # noqa
         utils.assertNoDiff(expected, actual)
 
@@ -178,7 +178,7 @@ BYT;
                             "size": "2476"  # 2500 - 24 (GRUB stage 1.5)
                         },
                         {
-                            "vg": "fpa_test_vg_1",
+                            "vg": "rft_test_vg_1",
                             "type": "pv",
                             "size": "500"
                         }
@@ -190,12 +190,12 @@ BYT;
                     "type": "disk",
                     "volumes": [
                         {
-                            "vg": "fpa_test_vg_1",
+                            "vg": "rft_test_vg_1",
                             "type": "pv",
                             "size": "976"  # 1000 - 24 (GRUB stage 1.5)
                         },
                         {
-                            "vg": "fpa_test_vg_2",
+                            "vg": "rft_test_vg_2",
                             "type": "pv",
                             "size": "1000"
                         },
@@ -203,14 +203,14 @@ BYT;
                 },
                 {
                     "type": "vg",
-                    "id": "fpa_test_vg_1",
+                    "id": "rft_test_vg_1",
                     "volumes": [
                         {
                             "images": [
                                 "test"
                             ],
                             "type": "lv",
-                            "name": "fpa_usr_vol",
+                            "name": "rft_usr_vol",
                             "mount": "/usr",
                             "size": "100%",
                             "file_system": "ext3"
@@ -219,14 +219,14 @@ BYT;
                 },
                 {
                     "type": "vg",
-                    "id": "fpa_test_vg_2",
+                    "id": "rft_test_vg_2",
                     "volumes": [
                         {
                             "images": [
                                 "test"
                             ],
                             "type": "lv",
-                            "name": "fpa_opt_vol",
+                            "name": "rft_opt_vol",
                             "mount": "/opt",
                             "size": "100%",
                             "file_system": "ext4"
@@ -249,11 +249,11 @@ BYT;
         actual = node.run_cmd('parted -lm && pvs && lvs')[0]
         expected = """
 BYT;
-/dev/mapper/fpa_test_vg_2-fpa_opt_vol:1044MB:dm:512:512:loop:Linux device-mapper (linear):;
+/dev/mapper/rft_test_vg_2-rft_opt_vol:1044MB:dm:512:512:loop:Linux device-mapper (linear):;
 1:0.00B:1044MB:1044MB:ext4::;
 
 BYT;
-/dev/mapper/fpa_test_vg_1-fpa_usr_vol:1539MB:dm:512:512:loop:Linux device-mapper (linear):;
+/dev/mapper/rft_test_vg_1-rft_usr_vol:1539MB:dm:512:512:loop:Linux device-mapper (linear):;
 1:0.00B:1539MB:1539MB:ext3::;
 
 BYT;
@@ -269,11 +269,11 @@ BYT;
 3:1050MB:2098MB:1049MB::primary:lvm;
 
   PV         VG            Fmt  Attr PSize   PFree
-  /dev/vda3  fpa_test_vg_1 lvm2 a--  496.00m    0
-  /dev/vdb2  fpa_test_vg_1 lvm2 a--  972.00m    0
-  /dev/vdb3  fpa_test_vg_2 lvm2 a--  996.00m    0
+  /dev/vda3  rft_test_vg_1 lvm2 a--  496.00m    0
+  /dev/vdb2  rft_test_vg_1 lvm2 a--  972.00m    0
+  /dev/vdb3  rft_test_vg_2 lvm2 a--  996.00m    0
   LV          VG            Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
-  fpa_usr_vol fpa_test_vg_1 -wi-a-----   1.43g
-  fpa_opt_vol fpa_test_vg_2 -wi-a----- 996.00m
+  rft_usr_vol rft_test_vg_1 -wi-a-----   1.43g
+  rft_opt_vol rft_test_vg_2 -wi-a----- 996.00m
 """  # noqa
         utils.assertNoDiff(expected, actual)
