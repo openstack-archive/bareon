@@ -45,9 +45,6 @@ class LvmTestCase(tests_functional.TestCase):
                     "type": "disk",
                     "volumes": [
                         {
-                            "images": [
-                                "test"
-                            ],
                             "vg": "rft_test_vg_2",
                             "type": "pv",
                             "size": "1976"  # 2000 - 24 (GRUB stage 1.5)
