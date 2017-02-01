@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
+import tempfile
+
+import pytest
+
 from bareon import tests_functional
 from bareon.tests_functional import utils
 
@@ -152,6 +158,108 @@ is included with the distribution media.
         self._assert_vda_equal_to_goldenimage(node)
         self._assert_vdb_equal_to_goldenimage(node)
 
+    def test_verify_policy_match_with_unlabelled_disk(self):
+        deploy_conf = {
+            "partitions": self.golden_image_schema,
+            "partitions_policy": "verify"
+        }
+
+        self.env.patch_config_images(deploy_conf, 'test')
+        self.env.init_unlabelled_disk()
+        self.env.setup('data_retention_with_unlabelled_disk.xml', deploy_conf)
+        node = self.env.node
+
+        node.run_cmd(
+            'bareon-partition --debug '
+            '--data_driver ironic --deploy_driver swift',
+            check_ret_code=True, get_bareon_log=True)
+
+        # Check that schema did not change after partitioning with verify
+        # policy. Check that extra disk (vdb) has not been verified/changed
+        # since not mentioned in schema (0 return code)
+        actual = node.run_cmd('parted -l')[0]
+        expected = """
+Model: Virtio Block Device (virtblk)
+Disk /dev/vda: 11.8GB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+Disk Flags:
+
+Number  Start   End     Size    File system     Name     Flags
+ 1      1049kB  26.2MB  25.2MB                  primary  bios_grub
+ 2      26.2MB  4221MB  4194MB  ext4            primary
+ 3      4221MB  6318MB  2097MB  linux-swap(v1)  primary
+ 4      6318MB  10.4GB  4089MB  ext4            primary
+
+
+Model: Virtio Block Device (virtblk)
+Disk /dev/vdb: 106MB
+Sector size (logical/physical): 512B/512B
+Partition Table: loop
+Disk Flags:
+
+Number  Start  End    Size   File system  Flags
+ 1      0.00B  106MB  106MB  ext4
+
+
+Model: Virtio Block Device (virtblk)
+Disk /dev/vdc: 1049kB
+Sector size (logical/physical): 512B/512B
+Partition Table: unknown
+Disk Flags:
+"""  # noqa
+        utils.assertNoDiff(expected, actual)
+
+        self._assert_vda_equal_to_goldenimage(node)
+        self._assert_vdb_equal_to_goldenimage(node)
+
+    def test_verify_policy_match_blank_primary(self):
+        # Deploy an image to /dev/vdb, with a second disk, not mentioned in
+        # the deploy schema, containing a blank primary partition located
+        # at /dev/vda.
+        deploy_conf = {
+            "partitions": self.golden_image_schema,
+            "partitions_policy": "verify"
+        }
+        deploy_conf['partitions'][0]['id']['value'] = 'vdb'
+
+        self.env.patch_config_images(deploy_conf, 'test')
+        self.env.setup('data_retention_blank_primary.xml', deploy_conf)
+        node = self.env.node
+
+        node.run_cmd(
+            'bareon-partition --debug '
+            '--data_driver ironic --deploy_driver swift',
+            check_ret_code=True, get_bareon_log=True)
+
+        # Check that schema did not change after partitioning with
+        # verify policy
+        actual = node.run_cmd('parted -l')[0]
+        expected = """
+Model: Virtio Block Device (virtblk)
+Disk /dev/vda: 5243kB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+Disk Flags:
+
+Number  Start   End     Size    File system  Name     Flags
+ 1      17.4kB  5226kB  5209kB  ext4         primary
+
+
+Model: Virtio Block Device (virtblk)
+Disk /dev/vdb: 11.8GB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+Disk Flags:
+
+Number  Start   End     Size    File system     Name     Flags
+ 1      1049kB  26.2MB  25.2MB                  primary  bios_grub
+ 2      26.2MB  4221MB  4194MB  ext4            primary
+ 3      4221MB  6318MB  2097MB  linux-swap(v1)  primary
+ 4      6318MB  10.4GB  4089MB  ext4            primary
+"""
+        utils.assertNoDiff(expected, actual)
+
     def test_verify_policy_mismatch_extra_partition_in_schema(self):
         deploy_conf = {
             "partitions": self.golden_image_schema[:],
@@ -243,6 +351,87 @@ is included with the distribution media.
         utils.assertNoDiff("lost+found", out)
 
         self._assert_vdb_equal_to_goldenimage(node)
+
+    @pytest.mark.xfail
+    def test_verify_policy_preserve_fstab(self):
+        image = 'centos-7.1.1503.fpa_func_test.raw'
+
+        deploy_conf = {
+            'partitions_policy': 'clean',
+            'partitions': [
+                {
+                    "type": "disk",
+                    "id": {
+                        "type": "name",
+                        "value": "vda"
+                    },
+                    "size": "10000 MiB",
+                    "volumes": [
+                        {
+                            "images": [image],
+                            "type": "partition",
+                            "mount": "/",
+                            "file_system": "ext4",
+                            "size": "4000 MiB",
+                            "name": "test1"
+                        }
+                    ]
+                }
+            ]
+        }
+
+        self.env.patch_config_images(deploy_conf, 'test')
+        self.env.patch_config_images(deploy_conf, image)
+        self.env.setup('data_retention.xml', deploy_conf)
+        node = self.env.node
+
+        node.run_cmd(
+            'bareon-provision --debug '
+            '--data_driver ironic --deploy_driver swift',
+            check_ret_code=True, get_bareon_log=True)
+
+        extra_record = 'ftest-tmp /var/run tmpfs nodev,nosuid,noexec 0 0\n'
+        prefix = '/tmp/target'
+        fstab = os.path.join(prefix, 'etc/fstab')
+
+        node.run_cmd('mount /dev/vda2 {}'.format(prefix), check_ret_code=True)
+        with tempfile.NamedTemporaryFile() as tmp:
+            node.get_file(fstab, tmp.name)
+
+            tmp.seek(0, os.SEEK_END)
+            tmp.write('\n')
+            tmp.write(extra_record)
+            tmp.flush()
+
+            node.put_file(tmp.name, fstab)
+
+        with tempfile.NamedTemporaryFile() as tmp:
+            node.get_file('/tmp/provision.json', tmp.name)
+            tmp.seek(0, os.SEEK_SET)
+            deploy_conf = json.load(tmp)
+            deploy_conf['partitions_policy'] = 'verify'
+
+            tmp.seek(0, os.SEEK_SET)
+            tmp.truncate()
+            json.dump(deploy_conf, tmp)
+            tmp.flush()
+
+            node.put_file(tmp.name, '/tmp/provision.json')
+
+        node.run_cmd('umount {}'.format(prefix), check_ret_code=True)
+
+        node.run_cmd(
+            'bareon-provision --debug '
+            '--data_driver ironic --deploy_driver swift',
+            check_ret_code=True, get_bareon_log=True)
+
+        node.run_cmd('mount /dev/vda2 {}'.format(prefix), check_ret_code=True)
+        with tempfile.NamedTemporaryFile() as tmp:
+            node.get_file(fstab, tmp.name)
+
+            tmp.seek(0, os.SEEK_SET)
+            payload = tmp.readlines()
+            self.assertIn(extra_record, payload)
 
     def test_clean_policy(self):
         deploy_conf = {
