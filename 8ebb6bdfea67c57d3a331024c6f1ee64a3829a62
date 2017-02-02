@@ -1,0 +1,9 @@
+Code-Review+1: Doug Szumski <dszumski@cray.com>
+Code-Review+2: Andrii Ostapenko <aostapenko@mirantis.com>
+Workflow+1: Andrii Ostapenko <aostapenko@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 02 Feb 2017 14:24:41 +0000
+Reviewed-on: https://review.openstack.org/427699
+Project: openstack/bareon
+Branch: refs/heads/master
