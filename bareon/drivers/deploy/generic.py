@@ -27,6 +27,7 @@ from bareon.actions import configdrive
 from bareon.actions import partitioning
 from bareon.drivers.deploy.base import BaseDeployDriver
 from bareon.drivers.deploy import mixins
+from bareon.drivers.data import generic as generic_data_driver
 from bareon import errors
 from bareon import objects
 from bareon.utils import block_device
@@ -82,7 +83,14 @@ class GenericDeployDriver(BaseDeployDriver, mixins.MountableMixin):
         LOG.debug('--- Provisioning (do_provisioning) ---')
         self.do_partitioning()
         self.do_configdrive()
-        map(self.do_install_os, self.driver.get_os_ids())
+
+        avoid_storage_modification = False
+        if isinstance(self.driver, generic_data_driver.GenericDataDriver):
+            if self.driver.partitions_policy == 'verify':
+                avoid_storage_modification = True
+        if not avoid_storage_modification:
+            map(self.do_install_os, self.driver.get_os_ids())
+
         if self.driver.is_multiboot:
             self.do_multiboot_bootloader()
         LOG.debug('--- Provisioning END (do_provisioning) ---')
