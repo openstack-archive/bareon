@@ -112,8 +112,6 @@ Number  Start   End     Size    File system  Name     Flags
         node.ssh_login = self.node_ssh_login
         node.wait_for_boot()
 
-        # Set node.ssh_key to "path to tenant key"
-        # (if tenant key is different than deploy key)
         actual = node.run_cmd('uname -a')[0]
         expected = ('Linux fpa-func-test-tenant-vm 3.10.0-229.20.1.el7.x86_64'
                     ' #1 SMP Tue Nov 3 19:10:07 UTC 2015 x86_64 x86_64 x86_64'
@@ -190,8 +188,6 @@ Number  Start   End     Size    File system  Name     Flags
         node.ssh_login = self.node_ssh_login
         node.wait_for_boot()
 
-        # Set node.ssh_key to "path to tenant key"
-        # (if tenant key is different than deploy key)
         actual = node.run_cmd('uname -a')[0]
         expected = ('Linux fpa-func-test-tenant-vm 3.10.0-229.20.1.el7.x86_64'
                     ' #1 SMP Tue Nov 3 19:10:07 UTC 2015 x86_64 x86_64 x86_64'
@@ -557,9 +553,8 @@ is included with the distribution media.
         utils.assertNoDiff(expected_vda_usr, actual_vda_usr)
 
     def _update_cloud_conf(self, node, part='vda2'):
-        # Update the cloud config in the tenant image to contain the
-        # correct SSH public key. Normally this would be done from Ironic
-        # using deploy actions, or as part of cloud init.
+        """Inject cloud init config file into deployed system"""
+
         cloud_cfg_path = os.path.join(node.workdir, "cloud.cfg")
         node.put_file(cloud_cfg_path, '/tmp/cloud.cfg')
         node.run_cmd('mkdir /tmp/{0}'.format(part))

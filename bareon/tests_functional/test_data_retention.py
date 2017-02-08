@@ -105,13 +105,15 @@ Number  Start  End    Size   File system  Flags
         self._assert_vda_usr_equal_to_goldenimage(node)
 
     def _assert_vda_root_equal_to_goldenimage(self, node):
-        # Roughly checking that vda / partition not changed
+        """Roughly checking that "/" partition not changed"""
+
         actual_vda = node.read_file("/dev/vda2", "etc/centos-release")
         expected_vda = "CentOS Linux release 7.1.1503 (Core)"
         utils.assertNoDiff(expected_vda, actual_vda)
 
     def _assert_vda_usr_equal_to_goldenimage(self, node):
-        # Roughly checking that vda /usr partition not changed
+        """Roughly checking that "/usr" partition not changed"""
+
         actual_vda = node.read_file("/dev/vda4", "share/centos-release/EULA")
         expected_vda = """
 CentOS-7 EULA
@@ -126,7 +128,8 @@ is included with the distribution media.
         utils.assertNoDiff(expected_vda, actual_vda)
 
     def _assert_vdb_equal_to_goldenimage(self, node):
-        # Checking that vdb golden image contents are not erased
+        """Checking that vdb golden image contents are not erased"""
+
         actual_vdb = node.read_file("/dev/vdb", "test-content")
         expected_vdb = "test content"
         utils.assertNoDiff(expected_vdb, actual_vdb)
@@ -146,10 +149,9 @@ is included with the distribution media.
                      check_ret_code=True,
                      get_bareon_log=True)
 
-        # Check that schema did not change after partitioning with
-        # verify policy
-        # Check that extra disk (vdb) has not been verified/changed since not
-        # mentioned in schema (0 return code)
+        # Expectations:
+        #  - all partitions on all disks must stay untouched
+        #  - vdb must stay untouched (because it didn't mention in schema)
         actual = node.run_cmd('parted -l')[0]
         expected = self.golden_image_parted_output
         utils.assertNoDiff(expected, actual)
@@ -173,9 +175,9 @@ is included with the distribution media.
             '--data_driver ironic --deploy_driver swift',
             check_ret_code=True, get_bareon_log=True)
 
-        # Check that schema did not change after partitioning with verify
-        # policy. Check that extra disk (vdb) has not been verified/changed
-        # since not mentioned in schema (0 return code)
+        # Expectations:
+        #  - all partitions on all disks must stay untouched
+        #  - vdb must stay untouched (because it didn't mention in schema)
         actual = node.run_cmd('parted -l')[0]
         expected = """
 Model: Virtio Block Device (virtblk)
@@ -213,9 +215,13 @@ Disk Flags:
         self._assert_vdb_equal_to_goldenimage(node)
 
     def test_verify_policy_match_blank_primary(self):
-        # Deploy an image to /dev/vdb, with a second disk, not mentioned in
-        # the deploy schema, containing a blank primary partition located
-        # at /dev/vda.
+        """HDD not mentioned in schema must stay untouched
+
+        Deploy an image to /dev/vdb, with a second disk, not mentioned in
+        the deploy schema, containing a blank primary partition located
+        at /dev/vda.
+        """
+
         deploy_conf = {
             "partitions": self.golden_image_schema,
             "partitions_policy": "verify"
@@ -231,8 +237,8 @@ Disk Flags:
             '--data_driver ironic --deploy_driver swift',
             check_ret_code=True, get_bareon_log=True)
 
-        # Check that schema did not change after partitioning with
-        # verify policy
+        # Expectations:
+        #  - all partitions on all disks must stay untouched
         actual = node.run_cmd('parted -l')[0]
         expected = """
 Model: Virtio Block Device (virtblk)
@@ -283,8 +289,8 @@ Number  Start   End     Size    File system     Name     Flags
             get_bareon_log=True)
         self.assertEqual(255, ret_code)
 
-        # Check that schema did not change after partitioning with
-        # verify policy
+        # Expectations:
+        #  - all partitions on all disks must stay untouched
         actual = node.run_cmd('parted -l')[0]
         expected = self.golden_image_parted_output
         utils.assertNoDiff(expected, actual)
@@ -310,8 +316,8 @@ Number  Start   End     Size    File system     Name     Flags
             get_bareon_log=True)
         self.assertEqual(255, ret_code)
 
-        # Check that schema did not change after partitioning with
-        # verify policy
+        # Expectations:
+        #  - all partitions on all disks must stay untouched
         actual = node.run_cmd('parted -l')[0]
         expected = self.golden_image_parted_output
         utils.assertNoDiff(expected, actual)
@@ -337,14 +343,14 @@ Number  Start   End     Size    File system     Name     Flags
                      '--deploy_driver swift --debug',
                      get_bareon_log=True)
 
-        # Check that schema did not change after partitioning with
-        # verify policy
+        # Expectations:
+        #  - all partitions on all disks must stay untouched
+        #  - File system on /dev/vda4 must be recreated
         actual = node.run_cmd('parted -l')[0]
         expected = self.golden_image_parted_output
         utils.assertNoDiff(expected, actual)
 
         self._assert_vda_root_equal_to_goldenimage(node)
-        # Check vda /usr has been erased
         out, ret_code = node.run_cmd('mount -t ext4 /dev/vda4 /mnt && '
                                      'ls /mnt && '
                                      'umount /mnt')
@@ -469,7 +475,8 @@ Number  Start   End     Size    File system     Name     Flags
                      check_ret_code=True,
                      get_bareon_log=True)
 
-        # Check that schema has been applied (to vda only)
+        # Expectations:
+        #  - vda is the only disk with changed partitions schema
         actual = node.run_cmd('parted -l')[0]
         expected = """
 Model: Virtio Block Device (virtblk)
@@ -497,10 +504,11 @@ Number  Start  End    Size   File system  Flags
         self._assert_vdb_equal_to_goldenimage(node)
 
     def test_clean_policy_disk_too_small(self):
-        # Tries to deploy to a disk which is too small for the schema.
-        # The Fuel agent should throw:
-        # NotEnoughSpaceError: Partition scheme for: /dev/vdb exceeds the size
-        # of the disk. Scheme size is 150 MB, and disk size is 106.303488 MB.
+        """Deploy to a disk which is too small for the schema
+
+        The bareon must throw exception, explains the lack of space on target
+        HDD.
+        """
         deploy_conf = {
             "partitions": [
                 {
@@ -532,12 +540,12 @@ Number  Start  End    Size   File system  Flags
                        deploy_config=deploy_conf)
         node = self.env.node
 
-        # Return code should be 255 due to the agent throwing an exception
+        # Expectations:
+        #  - all partitions on all disks must stay untouched
+        #  - exit code is 255
         out, ret_code = node.run_cmd(
             'bareon-partition --data_driver ironic '
             '--deploy_driver swift --debug',
             check_ret_code=False, get_bareon_log=True)
         self.assertEqual(255, ret_code)
-
-        # Nothing should have changed
         self._assert_vdb_equal_to_goldenimage(node)
