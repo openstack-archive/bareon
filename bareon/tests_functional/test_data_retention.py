@@ -151,7 +151,8 @@ is included with the distribution media.
 
         # Expectations:
         #  - all partitions on all disks must stay untouched
-        #  - vdb must stay untouched (because it didn't mention in schema)
+        #  - vdb must stay untouched (because it wasn't mentioned in the
+        #    schema)
         actual = node.run_cmd('parted -l')[0]
         expected = self.golden_image_parted_output
         utils.assertNoDiff(expected, actual)
@@ -177,7 +178,8 @@ is included with the distribution media.
 
         # Expectations:
         #  - all partitions on all disks must stay untouched
-        #  - vdb must stay untouched (because it didn't mention in schema)
+        #  - vdb must stay untouched (because it wasn't mentioned in the
+        #    schema)
         actual = node.run_cmd('parted -l')[0]
         expected = """
 Model: Virtio Block Device (virtblk)
