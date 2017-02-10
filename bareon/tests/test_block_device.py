@@ -63,15 +63,20 @@ class TestDeviceFinder(unittest2.TestCase):
 
         self.block_device_list = mock.Mock()
         self.device_info = mock.Mock()
+        self.dev_to_scsi_map = mock.Mock()
 
         for path, m in (
                 ('bareon.utils.hardware.'
                  'get_block_data_from_udev', self.block_device_list),
                 ('bareon.utils.hardware.'
-                 'get_device_info', self.device_info)):
+                 'get_device_info', self.device_info),
+                ('bareon.utils.hardware.'
+                 'dev_to_scsi_map', self.dev_to_scsi_map)):
             patch = mock.patch(path, m)
             patch.start()
             self.addCleanup(patch.stop)
+
+        self.dev_to_scsi_map.return_value = {}
 
     def test(self):
         self.block_device_list.side_effect = [
@@ -79,13 +84,16 @@ class TestDeviceFinder(unittest2.TestCase):
             []]
         self.device_info.side_effect = [
             self._device_info['sample0']]
+        self.dev_to_scsi_map.return_value = {
+            '/dev/sda': '0:0:0:0'}
 
         finder = block_device.DeviceFinder()
         for kind, needle in (
                 ('name', 'sda'),
                 ('name', '/dev/sda'),
                 ('path', 'disk/by-id/wwn-0x5000c50060fce0bf'),
-                ('path', '/dev/disk/by-id/wwn-0x5000c50060fce0bf')):
+                ('path', '/dev/disk/by-id/wwn-0x5000c50060fce0bf'),
+                ('scsi', '0:0:0:0')):
             dev = finder(kind, needle)
             self.assertEqual(dev['uspec']['DEVNAME'], '/dev/sda')
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
+
 import six
 import unittest2
 
@@ -164,6 +166,25 @@ supports-register-dump: yes
                                           '--export',
                                           '--name=/dev/fake',
                                           check_exit_code=[0])
+
+    @mock.patch('os.listdir')
+    def test_dev_to_scsi_map(self, mock_listdir):
+        mock_listdir.side_effect = [
+            ('0:0:0:0', '8:0:0:0'),
+            ('sda', ),
+            OSError(
+                errno.ENOENT,
+                'No such file or directory',
+                '/sys/class/scsi_device/8:0:0:0/device/block')]
+
+        expected = {'/dev/sda': '0:0:0:0'}
+        actual = hu.dev_to_scsi_map()
+        self.assertEqual(expected, actual)
+        self.assertEqual(
+            mock_listdir.call_args_list, [
+                mock.call('/sys/class/scsi_device'),
+                mock.call('/sys/class/scsi_device/0:0:0:0/device/block'),
+                mock.call('/sys/class/scsi_device/8:0:0:0/device/block')])
 
     def test_multipath_true(self):
         uspec = {
