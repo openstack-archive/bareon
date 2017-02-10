@@ -475,6 +475,36 @@ class BlockDevicePayload(object):
 
 
 class Disk(BlockDevicePayload, AbstractStorage):
+    """Represent block device (disk)
+
+    This object is capable to plan blocks allocation(calculate offset, size and
+    overlapping) by requested length. Allocation done with respect to "reserved
+    zones" recommended alignments and already allocated blocks.
+
+    You can create "empty" disk object and fill it from scratch or you can
+    request to scan real block device. In this case you will receive disk
+    object that represent existing partitions layout.
+
+    To address block on "disk" you need first and last sectors offset. Or you
+    need first sector offset and block length. Usually you need all 3 address
+    "component" - first and lasts sectors offset and length. We can say there
+    is 2 unit used to "address" blocks on "disk" - offset and length.
+
+    Usually we have only 2 component of block's address. 3rd component can be
+    calculated from existing two.
+
+    To calculate last sector from first sector and length:
+    last_sector = first_sector + length - 1
+    To calculate length from first and last sectors:
+    length = last_sectore - first_sector + 1
+
+    "+1" and "-1" appear in out math because block's ends are included in
+    block. (last sector is part of block, same for first sector).
+
+    I hope now you understand the meaning of "+1" and "-1" operations in
+    block's address manipulation code.
+    """
+
     model = None
     table = None
 
