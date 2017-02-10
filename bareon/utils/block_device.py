@@ -1,5 +1,5 @@
 #
-# Copyright 2015 Cray Inc.  All Rights Reserved.
+# Copyright 2017 Cray Inc.  All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -71,6 +71,8 @@ class DeviceFinder(object):
         self.dev_by_scsi = {}
         self.dev_by_path = {}
 
+        self._dev_to_scsi = hardware.dev_to_scsi_map()
+
         disks = hardware.get_block_data_from_udev('disk')
         partitions = hardware.get_block_data_from_udev('partition')
         for dev in itertools.chain(disks, partitions):
@@ -81,7 +83,6 @@ class DeviceFinder(object):
 
     def _parse(self, record):
         dev = record['uspec']['DEVNAME']
-        record['scsi'] = hardware.scsi_address(dev)
 
         self.dev_list.append(record)
 
@@ -89,9 +90,12 @@ class DeviceFinder(object):
         self.dev_by_name[self._cut_prefix(dev, '/dev/')] = record
         self.dev_by_path[dev] = record
 
-        scsi_addr = record['scsi']
-        if scsi_addr:
+        try:
+            scsi_addr = self._dev_to_scsi[dev]
             self.dev_by_scsi[scsi_addr] = record
+            record['scsi'] = scsi_addr
+        except KeyError:
+            record['scsi'] = None
 
         for p in record['uspec'].get('DEVLINKS', ()):
             match_uuid = re.search(

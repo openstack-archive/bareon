@@ -1,4 +1,5 @@
-# Copyright 2014 Mirantis, Inc.
+#
+# Copyright 2017 Cray Inc.  All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import os
 import re
 import stat
@@ -255,27 +257,29 @@ def extrareport(dev):
     return spec
 
 
+def dev_to_scsi_map():
+    dev_to_scsi = {}
+
+    sys_path = '/sys/class/scsi_device'
+    block_device_mapping = 'device/block'
+
+    for scsi_addr in os.listdir(sys_path):
+        mapping_path = os.path.join(sys_path, scsi_addr, block_device_mapping)
+        try:
+            for block_devices in os.listdir(mapping_path):
+                block_devices = os.path.join('/dev', block_devices)
+                dev_to_scsi[block_devices] = scsi_addr
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+
+    return dev_to_scsi
+
+
 def is_block_device(filepath):
     """Check whether `filepath` is a block device."""
     mode = os.stat(filepath).st_mode
     return stat.S_ISBLK(mode)
-
-
-def scsi_address_list():
-    scsi_sg_path = '/proc/scsi/sg/'
-    try:
-        scsi_devices = open(scsi_sg_path + 'devices').read().splitlines()
-    except IOError:
-        return []
-    else:
-        return [':'.join(dev.split()[:4]) for dev in scsi_devices]
-
-
-def scsi_address(dev):
-    for address in scsi_address_list():
-        scsi_path = '/sys/class/scsi_device/%s/device/block/' % address
-        if dev == os.path.join('/dev', os.listdir(scsi_path)[0]):
-            return address
 
 
 def is_multipath_device(device, uspec=None):
