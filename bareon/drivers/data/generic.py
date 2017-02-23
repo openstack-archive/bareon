@@ -29,15 +29,7 @@ from bareon.drivers.data.base import PartitioningDataDriverMixin
 from bareon.drivers.data.base import ProvisioningDataDriverMixin
 
 
-opts = [
-    cfg.StrOpt(
-        'config_drive_path',
-        default='/tmp/config-drive.img',
-        help='Path where to store generated config drive image',
-    ),
-]
 CONF = cfg.CONF
-CONF.register_opts(opts)
 
 
 # TODO(lobur): This driver mostly copies nailgun driver. Need to merge them.

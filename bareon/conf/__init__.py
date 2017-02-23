@@ -13,6 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from bareon import conf
+from oslo_config import cfg
+from oslo_log import log as logging
 
-conf.register_opts()
+from bareon.conf import default
+
+CONF = cfg.CONF
+
+
+def register_opts():
+    default.register_opts(CONF)
+
+    logging.register_options(CONF)
