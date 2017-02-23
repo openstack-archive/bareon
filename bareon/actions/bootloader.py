@@ -27,49 +27,7 @@ from bareon.utils import grub as gu
 from bareon.utils import hardware as hw
 from bareon.utils import utils
 
-opts = [
-    cfg.IntOpt(
-        'timeout',
-        default=10,
-        help='Timeout in secs for GRUB'
-    ),
-    cfg.BoolOpt(
-        'fix_udev_net_rules',
-        default=True,
-        help='Add udev rules for NIC remapping'
-    ),
-    cfg.ListOpt(
-        'lvm_filter_for_mpath',
-        default=['r|^/dev/disk/.*|',
-                 'a|^/dev/mapper/.*|',
-                 'r/.*/'],
-        help='Extra filters for lvm.conf to force LVM works with partitions '
-             'on multipath devices properly.'
-    ),
-    cfg.ListOpt(
-        'mpath_lvm_preferred_names',
-        default=['^/dev/mapper/'],
-        help='List of devlinks patterns which are preffered for LVM. If '
-             'multipath device has a few devlinks, LVM will use the one '
-             'matching to the given pattern.'
-    ),
-    cfg.ListOpt(
-        'mpath_lvm_scan_dirs',
-        default=['/dev/disk/', '/dev/mapper/'],
-        help='List of directories to scan recursively for LVM physical '
-             'volumes. Devices in directories outside this hierarchy will be '
-             'ignored.'
-    ),
-    cfg.StrOpt(
-        'lvm_conf_path',
-        default='/etc/lvm/lvm.conf',
-        help='Path to LVM configuration file'
-    )
-]
-
 CONF = cfg.CONF
-CONF.register_opts(opts)
-
 LOG = logging.getLogger(__name__)
 
 
