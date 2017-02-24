@@ -32,7 +32,7 @@ from bareon.utils import utils
 LOG = logging.getLogger(__name__)
 
 
-class GDisk(object):
+class SGDisk(object):
     def __init__(self, dev):
         self.dev = dev
 
@@ -60,7 +60,7 @@ class GDisk(object):
             output = utils.execute(
                 'sgdisk', '--info', '{}'.format(partition.index),
                 self.dev)[0]
-            guid = _GDiskInfo(output).guid
+            guid = _SGDiskInfo(output).guid
         return guid
 
 
@@ -481,7 +481,7 @@ class Disk(BlockDevicePayload, AbstractStorage):
     @classmethod
     def new_by_scan(cls, dev, partitions=True):
         output = utils.execute('sgdisk', '--print', dev)[0]
-        disk_info = _GDiskPrint(output)
+        disk_info = _SGDiskPrint(output)
 
         disk_block = _BlockDevice(
             dev, disk_info.sectors, disk_info.sector_size)
@@ -501,7 +501,7 @@ class Disk(BlockDevicePayload, AbstractStorage):
             output = utils.execute(
                 'sgdisk', '--info', '{}'.format(listing_info.index),
                 disk_block.dev)[0]
-            detailed_info = _GDiskInfo(output)
+            detailed_info = _SGDiskInfo(output)
 
             dev = disk_block.device_by_index(listing_info.index)
             block = _BlockDevice(
@@ -942,7 +942,7 @@ class _BlockDevice(object):
         return any('boot sector' in x for x in records)
 
 
-class _GDiskMessage(object):
+class _SGDiskMessage(object):
     _payload_field_match_rules = ()
     _payload_field_converts = {}
     _payload_mandatory_fields = frozenset()
@@ -1063,7 +1063,7 @@ class _GDiskMessage(object):
         return chars.pop() == '*'
 
 
-class _GDiskPrint(_GDiskMessage):
+class _SGDiskPrint(_SGDiskMessage):
     _payload_field_match_rules = (
         re.compile(r'^[Dd]isk\s+(?P<disk>/dev/[A-Za-z][A-Za-z0-9]+): '
                    r'(?P<sectors>\d+) sectors'),
@@ -1098,7 +1098,7 @@ class _GDiskPrint(_GDiskMessage):
     align = 1
 
     def __init__(self, data):
-        super(_GDiskPrint, self).__init__(data)
+        super(_SGDiskPrint, self).__init__(data)
 
         table_format = 'gpt'
         if self._notice:
@@ -1139,7 +1139,7 @@ class _GDiskPrint(_GDiskMessage):
         return partitions
 
 
-class _GDiskInfo(_GDiskMessage):
+class _SGDiskInfo(_SGDiskMessage):
     _payload_field_match_rules = (
         re.compile(r'^[Pp]artition\s+unique\s+GUID:\s*(?P<guid>\S+)$'),
         re.compile(r'^[Ff]irst\s+sector:\s+(?P<begin>\d+)\s+\('),
@@ -1160,7 +1160,7 @@ class _GDiskInfo(_GDiskMessage):
     guid = begin = end = size = attributes = None
 
     def __init__(self, data):
-        super(_GDiskInfo, self).__init__(data)
+        super(_SGDiskInfo, self).__init__(data)
 
         for field, value in self._payload.items():
             setattr(self, field, value)

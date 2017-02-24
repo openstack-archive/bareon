@@ -505,7 +505,7 @@ class PartitionPolicyClean(AbstractPartitionPolicy):
         lu.pvremove_all()
 
     def _handle_disk(self, disk):
-        gdisk = block_device.GDisk(disk.dev)
+        gdisk = block_device.SGDisk(disk.dev)
 
         gdisk.zap()
         try:
