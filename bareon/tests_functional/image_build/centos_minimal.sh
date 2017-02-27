@@ -35,8 +35,8 @@ git clone -b $DIB_BRANCH $DIB_SRC
 git clone -b $DIB_UTILS_BRANCH $DIB_UTILS_SRC
 git clone -b $DIB_ELEMENTS_BRANCH $DIB_ELEMENTS_SRC
 
+# Prepare SSH key
 ssh-keygen -N '' -f bareon_key
-cp -f bareon_key.pub  "$BUILD_DIR/bareon-image-elements/centos-bareon/install.d/files.ironic/root/.ssh/authorized_keys"
 
 # Apply changes from https://review.openstack.org/319909
 # The problem is still actual for CentOS (https://bugs.launchpad.net/diskimage-builder/+bug/1650582)
@@ -52,6 +52,8 @@ export ELEMENTS_PATH="$BUILD_DIR/bareon-image-elements"
 export DIB_OFFLINE=1
 export DIB_DEBUG_TRACE=1
 export DIB_DATA_ROOT="$BUILD_DIR"
+#export DIB_BAREON_ROOT_PASSWORD=""
+[ -f bareon_key ] && export DIB_BAREON_INJECT_SSH_KEY="$PWD/bareon_key.pub"
 
 disk-image-create -n -t raw -o cent-min centos-minimal centos-bareon
 
