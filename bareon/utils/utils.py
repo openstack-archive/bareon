@@ -12,7 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import copy
+import errno
 import hashlib
 import json
 import locale
@@ -24,6 +26,7 @@ import shlex
 import socket
 import string
 import subprocess
+import tempfile
 import time
 
 import difflib
@@ -511,3 +514,101 @@ class EqualComparisonMixin(object):
         return {
             'cls': cls,
             'payload': vars(target)}
+
+
+class UsersSSHAuthorizedKeys(object):
+    AUTHORIZED_KEYS = 'authorized_keys'
+
+    need_sync = False
+    _known_key_kinds = (
+        'ssh-dss', 'ssh-rsa', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384',
+        'ecdsa-sha2-nistp521')
+
+    def __init__(self, login):
+        self.login = login
+        self.config_dir = self._make_config_dir_path()
+
+        self.keys = []
+        self._load_keys()
+
+    def add(self, goal):
+        parsed_goal = self._parse_key(goal)
+        if parsed_goal is None:
+            raise ValueError(
+                'Unable to parse SSH publick key: {}'.format(goal))
+
+        for raw, key in self.keys:
+            if key[:2] == parsed_goal[:2]:
+                break
+        else:
+            self.keys.append((goal, parsed_goal))
+            self.need_sync = True
+
+    def sync(self):
+        if not self.need_sync:
+            return
+
+        self._make_config_dir()
+        data = tempfile.NamedTemporaryFile(
+            mode='w+t', dir=self.config_dir,
+            prefix='~{}-'.format(self.AUTHORIZED_KEYS))
+        try:
+            for raw, key in self.keys:
+                data.write(raw)
+                data.write('\n')
+            data.flush()
+            os.chmod(data.name, 0o600)
+            os.rename(
+                data.name, os.path.join(self.config_dir, self.AUTHORIZED_KEYS))
+
+            self.need_sync = False
+        finally:
+            try:
+                data.close()
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
+
+    def _make_config_dir_path(self):
+        path = os.path.join('~{}'.format(self.login), '.ssh')
+        path = os.path.expanduser(path)
+        return path
+
+    def _load_keys(self):
+        path = os.path.join(self.config_dir, self.AUTHORIZED_KEYS)
+        try:
+            with open(path, 'rt') as data:
+                for line in data:
+                    line = line.strip()
+                    if line.startswith('#'):
+                        continue
+                    key = self._parse_key(line)
+                    if key is None:
+                        continue
+                    self.keys.append((line, key))
+        except IOError as e:
+            if e.errno != errno.ENOENT:
+                raise
+
+    def _parse_key(self, line):
+        match_expr = r'\s*({})\s+'.format(
+            '|'.join(re.escape(x) for x in self._known_key_kinds))
+        match = re.search(match_expr, line)
+        if match is None:
+            return
+
+        line = line[match.start(0):]
+        line = line.lstrip()
+        line = re.split(r'\s+', line, 2)
+        return SSHAuthorizedKey(*line)
+
+    def _make_config_dir(self):
+        try:
+            os.mkdir(self.config_dir, 0o700)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
+
+SSHAuthorizedKey = collections.namedtuple(
+    'SSHAuthorizedKey', 'kind, hash, comment')
