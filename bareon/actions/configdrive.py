@@ -27,32 +27,7 @@ from bareon import errors
 from bareon.utils import fs as fu
 from bareon.utils import utils
 
-opts = [
-    cfg.StrOpt(
-        'nc_template_path',
-        default='/usr/share/bareon/cloud-init-templates',
-        help='Path to directory with cloud init templates',
-    ),
-    cfg.StrOpt(
-        'tmp_path',
-        default='/tmp',
-        help='Temporary directory for file manipulations',
-    ),
-    cfg.StrOpt(
-        'config_drive_path',
-        default='/tmp/config-drive.img',
-        help='Path where to store generated config drive image',
-    ),
-    cfg.BoolOpt(
-        'prepare_configdrive',
-        default=True,
-        help='Create configdrive file, use pre-builded if set to False'
-    ),
-]
-
 CONF = cfg.CONF
-CONF.register_opts(opts)
-
 LOG = logging.getLogger(__name__)
 
 

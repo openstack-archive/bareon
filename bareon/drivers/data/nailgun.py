@@ -39,11 +39,7 @@ from bareon import objects
 
 
 LOG = logging.getLogger(__name__)
-
 CONF = cfg.CONF
-CONF.import_opt('prepare_configdrive', 'bareon.drivers.deploy.nailgun')
-CONF.import_opt('config_drive_path', 'bareon.drivers.deploy.nailgun')
-CONF.import_opt('default_root_password', 'bareon.drivers.deploy.nailgun')
 
 
 def match_device(hu_disk, ks_disk):

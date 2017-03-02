@@ -38,51 +38,13 @@ import six
 import stevedore.driver
 import urllib3
 
-
+from bareon import conf
 from bareon import errors
 
 random = _random.SystemRandom()
 
 LOG = logging.getLogger(__name__)
-
-u_opts = [
-    cfg.IntOpt(
-        'http_max_retries',
-        default=30,
-        help='Maximum retries count for http requests. 0 means infinite',
-    ),
-    cfg.FloatOpt(
-        'http_request_timeout',
-        # Setting it to 10 secs will allow bareon to overcome the momentary
-        # peak loads when network bandwidth becomes as low as 0.1MiB/s, thus
-        # preventing of wasting too much retries on such false positives.
-        default=10.0,
-        help='Http request timeout in seconds',
-    ),
-    cfg.FloatOpt(
-        'http_retry_delay',
-        default=2.0,
-        help='Delay in seconds before the next http request retry',
-    ),
-    cfg.IntOpt(
-        'read_chunk_size',
-        default=1048576,
-        help='Block size of data to read for calculating checksum',
-    ),
-    cfg.FloatOpt(
-        'execute_retry_delay',
-        default=2.0,
-        help='Delay in seconds before the next exectuion will retry',
-    ),
-    cfg.IntOpt(
-        'partition_udev_settle_attempts',
-        default=10,
-        help='How many times udev settle will be called after partitioning'
-    ),
-]
-
 CONF = cfg.CONF
-CONF.register_opts(u_opts)
 
 
 # NOTE(agordeev): signature compatible with execute from oslo
@@ -497,7 +459,7 @@ def list_opts():
 
     :returns: a list of (group_name, opts) tuples
     """
-    return [(None, (u_opts))]
+    return [(None, conf.default.utils_opts)]
 
 
 class EqualComparisonMixin(object):

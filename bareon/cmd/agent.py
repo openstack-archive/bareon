@@ -21,6 +21,7 @@ from oslo_log import log as logging
 import six
 import yaml
 
+from bareon import conf
 from bareon import errors
 from bareon.utils import utils
 from bareon import version
@@ -55,11 +56,6 @@ cli_opts = [
         'config_drive_path',
         default='/tmp/config-drive.img',
         help='Path where to store generated config drive image',
-    ),
-    cfg.StrOpt(
-        'image_build_dir',
-        default='/tmp',
-        help='Directory where the image is supposed to be built',
     ),
 ]
 
@@ -141,6 +137,8 @@ def handle_exception(exc):
 
 
 def main(actions=None):
+    conf.register_opts()
+
     # NOTE(agordeev): get its own process group by calling setpgrp.
     # Process group is used to distribute signals to subprocesses.
     # The main application is already a process group leader,

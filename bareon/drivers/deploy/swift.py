@@ -22,57 +22,7 @@ from bareon.utils import artifact as au
 from bareon.utils import fs as fu
 from bareon.utils import utils
 
-opts = [
-    cfg.StrOpt(
-        'image_build_suffix',
-        default='.bareon-image',
-        help='Suffix which is used while creating temporary files',
-    ),
-    cfg.IntOpt(
-        'max_loop_devices_count',
-        default=255,
-        # NOTE(agordeev): up to 256 loop devices could be allocated up to
-        # kernel version 2.6.23, and the limit (from version 2.6.24 onwards)
-        # isn't theoretically present anymore.
-        help='Maximum allowed loop devices count to use'
-    ),
-    cfg.IntOpt(
-        'sparse_file_size',
-        # XXX: Apparently Fuel configures the node root filesystem to span
-        # the whole hard drive. However 2 GB filesystem created with default
-        # options can grow at most to 2 TB (1024x its initial size). This
-        # maximal size can be configured by mke2fs -E resize=NNN option,
-        # however the version of e2fsprogs shipped with CentOS 6.[65] seems
-        # to silently ignore the `resize' option. Therefore make the initial
-        # filesystem a bit bigger so it can grow to 8 TB.
-        default=8192,
-        help='Size of sparse file in MiBs'
-    ),
-    cfg.IntOpt(
-        'loop_device_major_number',
-        default=7,
-        help='System-wide major number for loop device'
-    ),
-    cfg.IntOpt(
-        'fetch_packages_attempts',
-        default=10,
-        help='Maximum allowed debootstrap/apt-get attempts to execute'
-    ),
-    cfg.StrOpt(
-        'allow_unsigned_file',
-        default='allow_unsigned_packages',
-        help='File where to store apt setting for unsigned packages'
-    ),
-    cfg.StrOpt(
-        'force_ipv4_file',
-        default='force_ipv4',
-        help='File where to store apt setting for forcing IPv4 usage'
-    ),
-]
-
 CONF = cfg.CONF
-CONF.register_opts(opts)
-
 LOG = logging.getLogger(__name__)
 
 

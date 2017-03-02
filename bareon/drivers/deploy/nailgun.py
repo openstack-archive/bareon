@@ -32,95 +32,7 @@ from bareon.utils import build as bu
 from bareon.utils import fs as fu
 from bareon.utils import utils
 
-opts = [
-    cfg.StrOpt(
-        'nc_template_path',
-        default='/usr/share/bareon/cloud-init-templates',
-        help='Path to directory with cloud init templates',
-    ),
-    cfg.StrOpt(
-        'tmp_path',
-        default='/tmp',
-        help='Temporary directory for file manipulations',
-    ),
-    cfg.StrOpt(
-        'config_drive_path',
-        default='/tmp/config-drive.img',
-        help='Path where to store generated config drive image',
-    ),
-    cfg.StrOpt(
-        'image_build_suffix',
-        default='.bareon-image',
-        help='Suffix which is used while creating temporary files',
-    ),
-    cfg.IntOpt(
-        'max_loop_devices_count',
-        default=255,
-        # NOTE(agordeev): up to 256 loop devices could be allocated up to
-        # kernel version 2.6.23, and the limit (from version 2.6.24 onwards)
-        # isn't theoretically present anymore.
-        help='Maximum allowed loop devices count to use'
-    ),
-    cfg.IntOpt(
-        'max_allowed_attempts_attach_image',
-        default=10,
-        help='Maximum allowed attempts to attach image file to loop device'
-    ),
-    cfg.IntOpt(
-        'sparse_file_size',
-        # XXX: Apparently Fuel configures the node root filesystem to span
-        # the whole hard drive. However 2 GB filesystem created with default
-        # options can grow at most to 2 TB (1024x its initial size). This
-        # maximal size can be configured by mke2fs -E resize=NNN option,
-        # however the version of e2fsprogs shipped with CentOS 6.[65] seems
-        # to silently ignore the `resize' option. Therefore make the initial
-        # filesystem a bit bigger so it can grow to 8 TB.
-        default=8192,
-        help='Size of sparse file in MiBs'
-    ),
-    cfg.IntOpt(
-        'loop_device_major_number',
-        default=7,
-        help='System-wide major number for loop device'
-    ),
-    cfg.IntOpt(
-        'fetch_packages_attempts',
-        default=10,
-        help='Maximum allowed debootstrap/apt-get attempts to execute'
-    ),
-    cfg.StrOpt(
-        'allow_unsigned_file',
-        default='allow_unsigned_packages',
-        help='File where to store apt setting for unsigned packages'
-    ),
-    cfg.StrOpt(
-        'force_ipv4_file',
-        default='force_ipv4',
-        help='File where to store apt setting for forcing IPv4 usage'
-    ),
-    cfg.BoolOpt(
-        'prepare_configdrive',
-        default=True,
-        help='Create configdrive file, use pre-builded if set to False'
-    ),
-    cfg.BoolOpt(
-        'fix_udev_net_rules',
-        default=True,
-        help='Add udev rules for NIC remapping'
-    ),
-    cfg.StrOpt(
-        'default_root_password',
-        default='r00tme',
-        help='Default password for root user',
-    )
-]
-
 CONF = cfg.CONF
-CONF.register_opts(opts)
-CONF.import_opt('image_build_dir', 'bareon.cmd.agent')
-CONF.import_opt('mpath_lvm_preferred_names', 'bareon.actions.bootloader')
-CONF.import_opt('lvm_conf_path', 'bareon.actions.bootloader')
-
 LOG = logging.getLogger(__name__)
 
 
@@ -687,23 +599,3 @@ class Manager(BaseDeployDriver):
         finally:
             LOG.info('Cleanup chroot')
             self.destroy_chroot(chroot)
-
-
-def list_opts():
-    """Returns a list of oslo.config options available in the library.
-
-    The returned list includes all oslo.config options which may be registered
-    at runtime by the library.
-
-    Each element of the list is a tuple. The first element is the name of the
-    group under which the list of elements in the second element will be
-    registered. A group name of None corresponds to the [DEFAULT] group in
-    config files.
-
-    The purpose of this is to allow tools like the Oslo sample config file
-    generator (oslo-config-generator) to discover the options exposed to users
-    by this library.
-
-    :returns: a list of (group_name, opts) tuples
-    """
-    return [(None, (opts))]

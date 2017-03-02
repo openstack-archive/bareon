@@ -26,17 +26,7 @@ from bareon import errors
 from bareon.utils import utils
 
 LOG = logging.getLogger(__name__)
-
-au_opts = [
-    cfg.IntOpt(
-        'data_chunk_size',
-        default=1048576,
-        help='Size of data chunk to operate with images'
-    ),
-]
-
 CONF = cfg.CONF
-CONF.register_opts(au_opts)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -229,23 +219,3 @@ class Chain(object):
             else:
                 return next_proc(proc)
         return six.moves.reduce(jump, self.processors)
-
-
-def list_opts():
-    """Returns a list of oslo.config options available in the library.
-
-    The returned list includes all oslo.config options which may be registered
-    at runtime by the library.
-
-    Each element of the list is a tuple. The first element is the name of the
-    group under which the list of elements in the second element will be
-    registered. A group name of None corresponds to the [DEFAULT] group in
-    config files.
-
-    The purpose of this is to allow tools like the Oslo sample config file
-    generator (oslo-config-generator) to discover the options exposed to users
-    by this library.
-
-    :returns: a list of (group_name, opts) tuples
-    """
-    return [(None, (au_opts))]

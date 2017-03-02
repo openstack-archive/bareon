@@ -38,37 +38,7 @@ from bareon.utils import md as mu
 from bareon.utils import partition as pu
 from bareon.utils import utils
 
-opts = [
-    cfg.StrOpt(
-        'udev_rules_dir',
-        default='/etc/udev/rules.d',
-        help='Path where to store actual rules for udev daemon',
-    ),
-    cfg.StrOpt(
-        'udev_rules_lib_dir',
-        default='/lib/udev/rules.d',
-        help='Path where to store default rules for udev daemon',
-    ),
-    cfg.StrOpt(
-        'udev_rename_substr',
-        default='.renamedrule',
-        help='Substring to which file extension .rules be renamed',
-    ),
-    cfg.StrOpt(
-        'udev_empty_rule',
-        default='empty_rule',
-        help='Correct empty rule for udev daemon',
-    ),
-    cfg.IntOpt(
-        'grub_timeout',
-        default=5,
-        help='Timeout in secs for GRUB'
-    ),
-]
-
 CONF = cfg.CONF
-CONF.register_opts(opts)
-
 LOG = logging.getLogger(__name__)
 
 
