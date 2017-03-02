@@ -1,0 +1,9 @@
+Code-Review+1: Doug Szumski <dszumski@cray.com>
+Code-Review+2: Bogun Dmitriy <dbogun@mirantis.com>
+Workflow+1: Bogun Dmitriy <dbogun@mirantis.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 02 Mar 2017 10:22:08 +0000
+Reviewed-on: https://review.openstack.org/435990
+Project: openstack/bareon
+Branch: refs/heads/master
