@@ -106,7 +106,7 @@ Number  Start   End     Size    File system  Name     Flags
         actual = node.run_cmd('parted -l')[0]
         utils.assertNoDiff(expected, actual)
 
-        self._update_cloud_conf(node)
+        self._upload_cloud_conf(node, 'vda2')
 
         node.reboot_to_hdd()
         node.ssh_login = self.node_ssh_login
@@ -182,7 +182,7 @@ Number  Start   End     Size    File system  Name     Flags
 
         utils.assertNoDiff(expected, actual)
 
-        self._update_cloud_conf(node, part='vda2')
+        self._upload_cloud_conf(node, 'vda2')
 
         node.reboot_to_hdd()
         node.ssh_login = self.node_ssh_login
@@ -261,7 +261,7 @@ Number  Start   End     Size    File system  Name     Flags
 
         utils.assertNoDiff(expected, actual)
 
-        self._update_cloud_conf(node, part='vda2')
+        self._upload_cloud_conf(node, 'sda2')
 
         node.reboot_to_hdd()
         node.ssh_login = self.node_ssh_login
@@ -352,6 +352,7 @@ Number  Start   End     Size    File system  Name     Flags
         expected_vda = "new content"
         utils.assertNoDiff(expected_vda, actual_vda)
 
+    @pytest.mark.xfail
     def test_provision_rsync_verify(self):
         """Test the behaviour of the verify partitions policy using rsync.
 
@@ -552,16 +553,16 @@ is included with the distribution media.
         expected_vda_usr = "new /usr content"
         utils.assertNoDiff(expected_vda_usr, actual_vda_usr)
 
-    def _update_cloud_conf(self, node, part='vda2'):
-        """Inject cloud init config file into deployed system"""
-
+    @staticmethod
+    def _upload_cloud_conf(node, part):
         cloud_cfg_path = os.path.join(node.workdir, "cloud.cfg")
-        node.put_file(cloud_cfg_path, '/tmp/cloud.cfg')
-        node.run_cmd('mkdir /tmp/{0}'.format(part))
-        node.run_cmd('mount -t ext4 /dev/{0} /tmp/{0}'.format(part))
-        node.run_cmd('cp -f /tmp/cloud.cfg /tmp/{0}/etc/cloud/cloud.cfg'
-                     .format(part))
-        node.run_cmd('umount /tmp/{0}'.format(part))
+        node.run_cmd('mkdir /tmp/{0}'.format(part), check_ret_code=True)
+        node.run_cmd(
+            'mount -t ext4 /dev/{0} /tmp/{0}'.format(part),
+            check_ret_code=True)
+        node.put_file(
+            cloud_cfg_path, '/tmp/{0}/etc/cloud/cloud.cfg'.format(part))
+        node.run_cmd('umount /tmp/{0}'.format(part), check_ret_code=True)
 
 
 class MultipleProvisioningTestCase(tests_functional.TestCase):
@@ -602,7 +603,6 @@ class MultipleProvisioningTestCase(tests_functional.TestCase):
                             "size": "3000"
                         }
                     ],
-
                 },
                 {
                     "id": {"type": "name", "value": "vdb"},
