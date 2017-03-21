@@ -32,8 +32,6 @@ from ironic.common import dhcp_factory
 from ironic.common import exception
 from ironic.common.glance_service import service_utils
 from ironic.common.i18n import _
-from ironic.common.i18n import _LE
-from ironic.common.i18n import _LI
 from ironic.common import image_service
 from ironic.common import keystone
 from ironic.common import pxe_utils
@@ -197,10 +195,10 @@ def build_instance_info_for_deploy(task):
             image_service.HttpImageService().validate_href(image_source)
         except exception.ImageRefValidationFailed:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Agent deploy supports only HTTP(S) URLs as "
-                              "instance_info['image_source']. Either %s "
-                              "is not a valid HTTP(S) URL or "
-                              "is not reachable."), image_source)
+                LOG.error("Agent deploy supports only HTTP(S) URLs as "
+                          "instance_info['image_source']. Either %s "
+                          "is not a valid HTTP(S) URL or "
+                          "is not reachable.", image_source)
         instance_info['image_url'] = image_source
 
     return instance_info
@@ -222,10 +220,10 @@ def _create_rootfs_link(task):
         image_service.HttpImageService().validate_href(rootfs)
     except exception.ImageRefValidationFailed:
         with excutils.save_and_reraise_exception():
-            LOG.error(_LE("Agent deploy supports only HTTP URLs as "
-                          "driver_info['deploy_squashfs']. Either %s "
-                          "is not a valid HTTP URL or "
-                          "is not reachable."), rootfs)
+            LOG.error("Agent deploy supports only HTTP URLs as "
+                      "driver_info['deploy_squashfs']. Either %s "
+                      "is not a valid HTTP URL or "
+                      "is not reachable.", rootfs)
     return rootfs
 
 
@@ -488,8 +486,8 @@ class FuelAgentVendor(base.VendorInterface):
 
         agent_status = kwargs.get('status')
         if agent_status != 'ready':
-            LOG.error(_LE('Deploy failed for node %(node)s. Fuel Agent is not '
-                      'in ready state, error: %(error)s'), {'node': node.uuid,
+            LOG.error('Deploy failed for node %(node)s. Fuel Agent is not '
+                      'in ready state, error: %(error)s', {'node': node.uuid,
                       'error': kwargs.get('error_message')})
             deploy_utils.set_failed_state(task, err_msg)
             return
@@ -522,7 +520,7 @@ class FuelAgentVendor(base.VendorInterface):
                 _sftp_upload(sftp, configdrive, '/tmp/config-drive.img')
 
             _ssh_execute(ssh, cmd, params)
-            LOG.info(_LI('Fuel Agent pass on node %s'), node.uuid)
+            LOG.info('Fuel Agent pass on node %s', node.uuid)
             manager_utils.node_set_boot_device(task, boot_devices.DISK,
                                                persistent=True)
             manager_utils.node_power_action(task, states.REBOOT)
@@ -533,4 +531,4 @@ class FuelAgentVendor(base.VendorInterface):
             deploy_utils.set_failed_state(task, msg)
         else:
             task.process_event('done')
-            LOG.info(_LI('Deployment to node %s done'), task.node.uuid)
+            LOG.info('Deployment to node %s done', task.node.uuid)
