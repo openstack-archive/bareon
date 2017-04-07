@@ -113,7 +113,7 @@ pre-start script
 end script
 
 script
-  # get console speed if provded with "console=ttySx,38400"
+  # get console speed if provided with "console=ttySx,38400"
   SPEED=\$(cat /proc/cmdline | sed -e"s/^.*console=ttyS${i}[,]*\([^ ]*\)[ ]*.*\$/\1/g")
   # or use 9600 console speed as default
   exec /sbin/getty -L \${SPEED:-9600} ttyS${i}
