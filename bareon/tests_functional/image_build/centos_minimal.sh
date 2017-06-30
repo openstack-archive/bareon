@@ -40,7 +40,7 @@ ssh-keygen -N '' -f bareon_key
 
 # Apply changes from https://review.openstack.org/319909
 # The problem is still actual for CentOS (https://bugs.launchpad.net/diskimage-builder/+bug/1650582)
-sed -i -e 's%mv \(/usr/lib/locale/locale-archive\)%cp \1%' diskimage-builder/elements/yum-minimal/pre-install.d/03-yum-cleanup
+sed -i -e 's%mv \(/usr/lib/locale/locale-archive\)%cp \1%' $BUILD_DIR/diskimage-builder/diskimage_builder/elements/yum-minimal/pre-install.d/03-yum-cleanup
 
 export PATH=$BUILD_DIR/diskimage-builder/bin:$BUILD_DIR/dib-utils/bin:$PATH
 
