@@ -1,4 +1,4 @@
-<domain type='kvm'>
+<domain type='{{ domain_type }}'>
 <name>{{ node_name }}</name>
   <memory>3145728</memory>
   <currentMemory>3145728</currentMemory>
