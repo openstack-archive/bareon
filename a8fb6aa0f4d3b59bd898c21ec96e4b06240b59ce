@@ -1,0 +1,11 @@
+Code-Review+2: Doug Szumski <dszumski@cray.com>
+Code-Review+1: Ben Motz <bmotz@cray.com>
+Code-Review+1: Juan J. Martínez <jmartinez@cray.com>
+Code-Review+1: Will Miller <wmiller@cray.com>
+Workflow+1: Doug Szumski <dszumski@cray.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 16 Aug 2017 08:53:10 +0000
+Reviewed-on: https://review.openstack.org/493818
+Project: openstack/bareon
+Branch: refs/heads/master
