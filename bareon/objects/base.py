@@ -30,7 +30,7 @@ class Serializable(object):
 
 class DictWrapperObject(object):
     def __init__(self, data):
-        for k, v in six.iteritems(data):
+        for k, v in data.items():
             if isinstance(v, (list, tuple)):
                 setattr(self, k, [DictWrapperObject(i) if isinstance(i, dict)
                                   else i for i in v])

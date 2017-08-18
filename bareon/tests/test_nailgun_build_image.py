@@ -196,7 +196,7 @@ class TestNailgunBuildImage(unittest2.TestCase):
         images = []
         fss = []
         data_length = len(data['image_data'].keys())
-        for mount, image in six.iteritems(data['image_data']):
+        for mount, image in data['image_data'].items():
             filename = os.path.basename(urlsplit(image['uri']).path)
             img_kwargs = {
                 'uri': 'file://' + os.path.join(data['output'], filename),

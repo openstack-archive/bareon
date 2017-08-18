@@ -67,7 +67,7 @@ def run_debootstrap(uri, suite, chroot, arch='amd64', eatmydata=False,
     so the rest of packages will be installed later by run_apt_get.
     """
     env_vars = copy.deepcopy(os.environ)
-    for proto in six.iterkeys(PROXY_PROTOCOLS):
+    for proto in PROXY_PROTOCOLS.keys():
         if proto in (proxies or {}):
             LOG.debug('Using {0} proxy {1} for debootstrap'.format(
                 proto, proxies[proto]))
@@ -169,7 +169,7 @@ def clean_apt_settings(chroot, allow_unsigned_file='allow_unsigned_packages',
              os.path.join(DEFAULT_APT_PATH['conf_dir'], force_ipv4_file),
              os.path.join(DEFAULT_APT_PATH['conf_dir'], allow_unsigned_file)]
     # also remove proxies
-    for p_file in six.itervalues(PROXY_PROTOCOLS):
+    for p_file in PROXY_PROTOCOLS.values():
         files.append(os.path.join(DEFAULT_APT_PATH['conf_dir'], p_file))
     remove_files(chroot, files)
     dirs = [DEFAULT_APT_PATH['preferences_dir'],
@@ -403,7 +403,7 @@ def parse_release_file(content):
     # fields (we know which ones are multivalues).
     data = yaml.load(content)
 
-    for attr, columns in six.iteritems(_multivalued_fields):
+    for attr, columns in _multivalued_fields.items():
         if attr not in data:
             continue
 
@@ -467,7 +467,7 @@ def add_apt_preference(name, priority, suite, section, chroot, uri,
         return
 
     conditions = set()
-    for field, condition in six.iteritems(_transformations):
+    for field, condition in _transformations.items():
         if field in deb_release:
             conditions.add(
                 '{0}={1}'.format(condition, deb_release[field])
@@ -488,7 +488,7 @@ def set_apt_proxy(chroot, proxies, direct_repo_addr=None):
     access to it bypass proxies.
     """
 
-    for protocol in six.iterkeys(proxies):
+    for protocol in proxies.keys():
         with open(os.path.join(chroot, DEFAULT_APT_PATH['conf_dir'],
                                PROXY_PROTOCOLS[protocol]), 'w') as f:
                 f.write('Acquire::{0}::proxy "{1}";\n'
@@ -712,7 +712,7 @@ def copy_kernel_initramfs(chroot, dstdir, clean=False):
              }
     utils.makedirs_if_not_exists(dstdir)
     boot_dir = os.path.join(chroot, 'boot')
-    for module in six.iterkeys(files):
+    for module in files.keys():
         mask = os.path.join(boot_dir, module + '*')
         all_files = glob.glob(mask)
         if len(all_files) > 1:
