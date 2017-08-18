@@ -19,7 +19,6 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
-import six
 from six.moves.urllib.parse import urljoin
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.parse import urlsplit
@@ -600,7 +599,7 @@ class Nailgun(BaseDataDriver,
         interface_dicts = [
             dict(name=name, **spec)
             for name, spec
-            in six.iteritems(data['interfaces'])
+            in data['interfaces'].items()
         ]
 
         admin_interface = next(
@@ -708,8 +707,7 @@ class Nailgun(BaseDataDriver,
         # for all those mount points. Images data are to be defined
         # at provision.json -> ['ks_meta']['image_data']
         LOG.debug('Looping over all images in provision data')
-        for mount_point, image_data in six.iteritems(
-                data['ks_meta']['image_data']):
+        for mount_point, image_data in data['ks_meta']['image_data'].items():
             LOG.debug('Adding image for fs %s: uri=%s format=%s container=%s' %
                       (mount_point, image_data['uri'],
                        image_data['format'], image_data['container']))
@@ -862,7 +860,7 @@ class NailgunBuildImage(BaseDataDriver,
         proxies = objects.RepoProxies()
 
         proxy_dict = self.data.get('proxies', {})
-        for protocol, uri in six.iteritems(proxy_dict.get('protocols', {})):
+        for protocol, uri in proxy_dict.get('protocols', {}).items():
             proxies.add_proxy(protocol, uri)
         proxies.add_direct_repo_addrs(proxy_dict.get(
             'direct_repo_addr_list', []))
@@ -888,7 +886,7 @@ class NailgunBuildImage(BaseDataDriver,
 
     def parse_schemes(self):
 
-        for mount, image in six.iteritems(self.data['image_data']):
+        for mount, image in self.data['image_data'].items():
             filename = os.path.basename(urlsplit(image['uri']).path)
             # Loop does not allocate any loop device
             # during initialization.
