@@ -1,0 +1,6 @@
+# Copyright 2017 Cray Inc. All rights reserved.
+---
+- name: Bootstrap a centos host ready for running ramdisk functional tests
+  hosts: localhost
+  roles:
+    - role: bootstrap_func_tests_centos

@@ -1,0 +1,136 @@
+# Copyright 2017 Cray Inc. All rights reserved.
+---
+
+- name: Register Bareon agent directory
+  command: pwd
+  args:
+    chdir: ../../../
+  register: bareon_top_dir
+
+- name: Set component directories
+  set_fact:
+    bareon_dir: '{{ bareon_top_dir.stdout }}'
+    ramdisk_func_test_dir: '{{ bareon_top_dir.stdout }}/bareon/tests_functional/tmp/ramdisk-func-test'
+    dib_utils_dir: '{{ bareon_top_dir.stdout }}/bareon/tests_functional/tmp/dib-utils'
+
+- name: Install system packages
+  yum:
+    name: "{{ item }}"
+    state: installed
+  with_items:
+    - epel-release  # Required for qemu-system-x86
+    - qemu-kvm
+    - qemu-kvm-tools
+    - qemu-system-x86
+    - libvirt
+    - libvirt-python
+    - diskimage-builder
+  become: yes
+
+- name: Install pip packages
+  pip:
+    name: '{{ item.package }}'
+    version: '{{ item.version }}'
+  with_items:
+    - { package: 'tox', version: '1.6' }
+    - { package: 'lxml', version: '3.7.3' }
+  become: yes
+
+- name: Clone the DIB utils repo
+  git:
+    repo: https://git.openstack.org/openstack/dib-utils
+    dest: '{{ dib_utils_dir }}'
+    accept_hostkey: yes
+
+- name: Install DIB utils
+  command: python setup.py install
+  args:
+    chdir: '{{ dib_utils_dir }}'
+  become: yes
+
+- name: Install Bareon
+  command: python setup.py install
+  args:
+    chdir: '{{ bareon_dir }}'
+  become: yes
+
+# When Bareon is installed, it generates some install related
+# files which aren't entirely removed when running
+# python setup.py clean --all. This causes the tests to fail due to
+# a permissions error. To prevent this, transfer ownership of these
+# files to the root user.
+- name: Update permissions of Bareon dir
+  file:
+    path: '{{ bareon_dir }}'
+    owner: root
+    group: root
+    recurse: yes
+  become: yes
+
+- name: Clone the ramdisk func tests repo
+  git:
+    repo: https://github.com/openstack/ramdisk-func-test.git
+    dest: '{{ ramdisk_func_test_dir }}'
+    accept_hostkey: yes
+  become: yes
+
+- name: Install ramdisk func tests framework
+  command: python setup.py install
+  args:
+    chdir: '{{ ramdisk_func_test_dir }}'
+  become: yes
+
+- name: Install func tests framework config file
+  command: install -m 777 ramdisk-func-test.conf.sample -D /etc/ramdisk-func-test/ramdisk-func-test.conf
+  args:
+    chdir: '{{ ramdisk_func_test_dir }}/etc/ramdisk-func-test'
+  become: yes
+
+- name: Update func tests framework config file
+  lineinfile:
+    path: /etc/ramdisk-func-test/ramdisk-func-test.conf
+    state: present
+    line: '{{ item.setting }}'
+    insertafter: '{{ item.comment }}'
+  with_items:
+    - { setting: 'libvirt_machine_type=pc-i440fx-2.0', comment: '^#libvirt_machine_type' }
+    - { setting: 'node_domain_type=qemu', comment: '^#node_domain_type' }
+    - { setting: 'node_boot_timeout=1500', comment: '^#node_boot_timeout' }
+  become: yes
+
+- name: Create repo stub (required by DIB when building Bareon deploy images)
+  file:
+    path: '/var/opt/cray/repos'
+    state: directory
+    owner: root
+    group: root
+    mode: 0644
+  become: yes
+
+- name: Disable libvirt auth
+  lineinfile:
+    path: /etc/libvirt/libvirtd.conf
+    state: present
+    line: '{{ item.setting }}'
+    insertafter: '{{ item.comment }}'
+  with_items:
+    - { setting: 'auth_unix_ro = "none"', comment: '^#auth_unix_ro' }
+    - { setting: 'auth_unix_rw = "none"', comment: '^#auth_unix_rw' }
+  become: yes
+
+- name: (Re)start libvirt and rsyncd
+  service:
+    name: '{{ item }}'
+    state: restarted
+    enabled: yes
+  with_items:
+    - libvirtd
+    - rsyncd
+  become: yes
+
+- name: Update IP tables for Ironic API and rsync
+  command: iptables -I INPUT -p tcp --dport '{{ item }}' -j ACCEPT
+  with_items:
+    - 8011
+    - 873
+  become: yes
