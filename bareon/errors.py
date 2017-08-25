@@ -55,17 +55,15 @@ class InputDataSchemaValidationError(WrongInputDataError):
     def __init__(self, defects):
         human_readable_defects = []
         for idx, d in enumerate(defects):
-            path = list(d.path)
-            path = '/'.join((str(x) for x in path))
             human_readable_defects.append(
-                '{:>2} (/{}): {}'.format('#{}'.format(idx), path, d.message))
+                '[ERROR{:>2}] {}'.format(' {}'.format(idx+1), d.message))
 
         indent = ' ' * 4
         separator = '\n{}'.format(indent)
         message = 'Invalid input data:\n{}{}'.format(
             indent, separator.join(human_readable_defects))
 
-        super(WrongInputDataError, self).__init__(message, defects)
+        super(WrongInputDataError, self).__init__(message)
         self.defects = defects
 
 
