@@ -257,7 +257,7 @@ class TestIronicDataValidator(unittest2.TestCase):
                 self.payload)
 
     def test_disks_missed_property_fail(self):
-        required = ['id', 'size', 'volumes', 'type']
+        required = ['id', 'volumes', 'type']
         for prop in required:
             fake = copy.deepcopy(self.payload)
             partitions = fake['partitions']
