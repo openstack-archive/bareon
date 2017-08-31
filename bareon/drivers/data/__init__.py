@@ -15,20 +15,15 @@
 
 import json
 
-import jsonschema.validators
-
 from bareon import errors
+
+from validate_schema import validate_schema
 
 
 def validate(schema_path, payload):
     schema = _load_validator_schema(schema_path)
 
-    cls = jsonschema.validators.validator_for(schema)
-    cls.check_schema(schema)
-    schema_validator = cls(schema, format_checker=jsonschema.FormatChecker())
-
-    defects = schema_validator.iter_errors(payload)
-    defects = list(defects)
+    defects = validate_schema(schema, payload)
     if defects:
         raise errors.InputDataSchemaValidationError(defects)
 
