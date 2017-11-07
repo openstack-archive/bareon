@@ -56,7 +56,7 @@ Follow the instructions on Running Bareon on Devstack upto and including
 .. code-block:: console
 
     cd ~/bareon
-    sudo yum install -y ansible
+    sudo yum install ansible
     ansible-playbook bareon/tests_functional/ansible/bootstrap_func_tests.yaml
     sudo NO_DIB=1 tox -e func
 

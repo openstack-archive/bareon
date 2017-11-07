@@ -48,8 +48,8 @@ Setup Libvirt
 
   .. code-block:: console
 
-    yum update -y
-    yum install -y git
+    yum update
+    yum install git
     reboot
 
 
@@ -271,7 +271,7 @@ Install Bareon and Build Images
   .. code-block:: console
 
     cd ~/bareon
-    sudo yum install -y diskimage-builder
+    sudo yum install diskimage-builder
     ./bareon/tests_functional/image_build/centos_minimal.sh
 
   .. note::
