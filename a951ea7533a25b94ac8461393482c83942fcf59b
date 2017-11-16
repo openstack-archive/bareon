@@ -1,0 +1,9 @@
+Verified+1: Jenkins
+Code-Review+2: Doug Szumski <doug@stackhpc.com>
+Workflow+1: Doug Szumski <doug@stackhpc.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Thu, 16 Nov 2017 09:40:31 +0000
+Reviewed-on: https://review.openstack.org/447920
+Project: openstack/bareon
+Branch: refs/heads/master
