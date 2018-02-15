@@ -535,7 +535,7 @@ physical volume
 - lvm_meta_size - a size that given to lvm to store metadata.
   Optional (64 MiB by default). Minimum allowable value: 10 MiB.
 - images - A list of strings, specifying the images to be used during deployment.
-  Images are referred to by the name specified in the “name” attribute of the image (see see `Images`_).
+  Images are referred to by the name specified in the "name" attribute of the image (see see `Images`_).
   Optional.
 
 
@@ -558,7 +558,7 @@ logical volume
   Optional (xfs by default).
 - disk_label - Filesystem label. Optional (empty by default).
 - images - A list of strings, specifying the images to be used during deployment.
-  Images are referred to by the name specified in the “name” attribute of the image (see see `Images`_).
+  Images are referred to by the name specified in the "name" attribute of the image (see see `Images`_).
   Optional.
 
 .. warning::

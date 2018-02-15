@@ -86,7 +86,7 @@ Setup Stack User
     cd ~stack/devstack
     tools/create-stack-user.sh
 
-3. Switch user to “stack”
+3. Switch user to "stack"
 
   .. code-block:: console
 
