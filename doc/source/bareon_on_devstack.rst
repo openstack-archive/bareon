@@ -13,7 +13,7 @@ Preparation
 
 What you will need:
 
--  A familiarity with `DevStack <http://docs.openstack.org/developer/devstack/>`_
+-  A familiarity with `DevStack <https://docs.openstack.org/developer/devstack/>`_
 -  A machine with:
 
    -  Local block storage. In this guide 40GB was used, but this is not definitive.

@@ -77,5 +77,5 @@ TODO:
 
 .. [#] https://wiki.openstack.org/wiki/Ironic
 .. [#] https://github.com/openstack/fuel-main
-.. [#] http://docs.openstack.org/developer/ironic/deploy/install-guide.html
+.. [#] https://docs.openstack.org/developer/ironic/deploy/install-guide.html
 .. [#] https://specs.openstack.org/openstack/ironic-specs/specs/4.2/new-boot-interface.html
