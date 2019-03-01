@@ -16,7 +16,6 @@ import collections
 import copy
 import errno
 import hashlib
-import json
 import locale
 import math
 import os
@@ -33,6 +32,7 @@ import difflib
 import jinja2
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 import requests
 import six
 import stevedore.driver
@@ -423,8 +423,8 @@ def gensalt():
 
 
 def dict_diff(dict1, dict2, sfrom="from", sto="to"):
-    j1 = json.dumps(dict1, indent=2)
-    j2 = json.dumps(dict2, indent=2)
+    j1 = jsonutils.dumps(dict1, indent=2)
+    j2 = jsonutils.dumps(dict2, indent=2)
     return text_diff(j1, j2, sfrom=sfrom, sto=sto)
 
 

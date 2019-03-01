@@ -16,10 +16,10 @@
 import abc
 import argparse
 import errno
-import json
 import os
 
 import mock
+from oslo_serialization import jsonutils
 import pkg_resources
 import six
 
@@ -33,7 +33,7 @@ class BlockDeviceMock(object):
 
         self.root = os.path.join(path, 'block-device', name)
         with open(os.path.join(self.root, 'meta.json')) as meta:
-            self.meta = json.load(meta)
+            self.meta = jsonutils.load(meta)
 
         self.mock_exec = mock.Mock(side_effect=self)
         self.mock_os_stat = mock.Mock(side_effect=self._os_stat)

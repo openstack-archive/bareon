@@ -15,10 +15,10 @@
 
 import collections
 import itertools
-import json
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 
 from bareon.drivers.data.generic import GenericDataDriver
 from bareon import errors
@@ -400,7 +400,7 @@ class StorageParser(object):
                 'Try to claim not existing operating systems: '
                 '"{}"\n\n{}'.format(
                     '", "'.join(sorted(missing)),
-                    json.dumps(data, indent=2)))
+                    jsonutils.dumps(data, indent=2)))
             fields['os_binding'] -= missing
 
         return fields

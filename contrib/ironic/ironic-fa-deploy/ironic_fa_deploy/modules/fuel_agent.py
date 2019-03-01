@@ -16,12 +16,12 @@
 Fuel Agent deploy driver.
 """
 
-import json
 import os
 import tempfile
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import fileutils
@@ -132,7 +132,7 @@ def _get_deploy_data(context, image_source):
     image_props = glance.show(image_source).get('properties', {})
     LOG.debug('Image %s properties are: %s', image_source, image_props)
     try:
-        disk_data = json.loads(image_props['fuel_disk_info'])
+        disk_data = jsonutils.loads(image_props['fuel_disk_info'])
     except KeyError:
         raise exception.MissingParameterValue(_('Image %s does not contain '
                                               'disk layout data.') %
@@ -512,7 +512,7 @@ class FuelAgentVendor(base.VendorInterface):
 
             ssh = utils.ssh_connect(params)
             sftp = ssh.open_sftp()
-            _sftp_upload(sftp, json.dumps(deploy_data), '/tmp/provision.json')
+            _sftp_upload(sftp, jsonutils.dumps(deploy_data), '/tmp/provision.json')
 
             # swift configdrive store should be disabled
             configdrive = instance_info.get('configdrive')

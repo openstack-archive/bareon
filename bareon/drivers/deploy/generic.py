@@ -15,12 +15,12 @@
 
 import abc
 import itertools
-import json
 import os
 import re
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 import six
 
 from bareon.actions import configdrive
@@ -282,7 +282,7 @@ class GenericDeployDriver(BaseDeployDriver, mixins.MountableMixin):
                   'multiboot_partition': uuid,
                   'current_element': boot_id}
         with open('/tmp/boot_entries.json', 'w') as boot_entries_file:
-            json.dump(result, boot_entries_file)
+            jsonutils.dump(result, boot_entries_file)
 
 
 # FIXME(dbogun): deprecated due to NEWTCORE-360 fix

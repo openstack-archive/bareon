@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
 import sys
 
 from oslo.config import cfg
+from oslo_serialization import jsonutils
 
 from bareon import errors
 from bareon.utils import utils
@@ -48,7 +48,7 @@ def worker():
             stream = sys.stdin
         else:
             stream = open(CONF.input_data_file, 'rt')
-        data = json.load(stream)
+        data = jsonutils.load(stream)
         stream.close()
     except IOError as e:
         raise OperationFailed('Unable to read input data {!r}: {} - {}'.format(

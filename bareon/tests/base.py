@@ -12,8 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
 import os
+
+from oslo_serialization import jsonutils
 
 
 FIXTURE_PATH = os.path.join(os.path.dirname(__file__), 'fixtures')
@@ -22,4 +23,4 @@ FIXTURE_PATH = os.path.join(os.path.dirname(__file__), 'fixtures')
 def load_fixture(filename):
     path = os.path.join(FIXTURE_PATH, filename)
     with open(path) as f:
-        return json.load(f)
+        return jsonutils.load(f)

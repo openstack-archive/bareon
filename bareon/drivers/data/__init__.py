@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
+from oslo_serialization import jsonutils
 
 from bareon import errors
 
@@ -31,7 +31,7 @@ def validate(schema_path, payload):
 def _load_validator_schema(schema_path):
     try:
         with open(schema_path, 'rt') as storage:
-            schema = json.load(storage)
+            schema = jsonutils.load(storage)
     except IOError as e:
         raise errors.ApplicationDataCorruptError(
             'Can\'t read validation schema "{}": {} {}'.format(
