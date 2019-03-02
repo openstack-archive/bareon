@@ -260,7 +260,7 @@ class LVMpv(BlockDevice):
 
 
 class LVMlv(FileSystemMixin, BlockDevice):
-    def __init__(self,  name, size, **fields):
+    def __init__(self, name, size, **fields):
         BlockDevice.__init__(self, size, **fields)
         self.name = name
 

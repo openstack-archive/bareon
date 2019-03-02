@@ -59,16 +59,16 @@ def match_device(hu_disk, ks_disk):
     uspec = hu_disk['uspec']
 
     # True if at least one by-id link matches ks_disk
-    if ('DEVLINKS' in uspec and len(ks_disk.get('extra', [])) > 0
-            and any(x.startswith('/dev/disk/by-id') for x in
-                    set(uspec['DEVLINKS']) &
-                    set(['/dev/%s' % l for l in ks_disk['extra']]))):
+    if ('DEVLINKS' in uspec and len(ks_disk.get('extra', [])) > 0 and
+            any(x.startswith('/dev/disk/by-id') for x in
+                set(uspec['DEVLINKS']) &
+                set(['/dev/%s' % l for l in ks_disk['extra']]))):
         return True
 
     # True if one of DEVLINKS matches ks_disk id
-    if (len(ks_disk.get('extra', [])) == 0
-            and 'DEVLINKS' in uspec and 'id' in ks_disk
-            and '/dev/%s' % ks_disk['id'] in uspec['DEVLINKS']):
+    if (len(ks_disk.get('extra', [])) == 0 and
+            'DEVLINKS' in uspec and 'id' in ks_disk and
+            '/dev/%s' % ks_disk['id'] in uspec['DEVLINKS']):
         return True
 
     return False
@@ -349,8 +349,8 @@ class Nailgun(BaseDataDriver,
             if all((
                 v["size"] <= 0
                 for v in disk["volumes"]
-                if v["type"] not in ("boot", 'lvm_meta_pool')
-                    and v.get("mount") != "/boot"
+                if v["type"] not in ("boot", 'lvm_meta_pool') and
+                    v.get("mount") != "/boot"
             )):
                 continue
 
@@ -437,9 +437,9 @@ class Nailgun(BaseDataDriver,
                             keep_data=volume.get('keep_data', False))
                         LOG.debug('Partition name: %s' % prt.name)
 
-                    elif (volume.get('mount') == '/boot'
-                            and not self._boot_partition_done
-                            and disk['name'] in
+                    elif (volume.get('mount') == '/boot' and
+                            not self._boot_partition_done and
+                            disk['name'] in
                             [d['name'] for d in self.boot_disks]):
                         LOG.debug('Adding /boot partition on disk %s: '
                                   'size=%s', disk['name'], volume['size'])

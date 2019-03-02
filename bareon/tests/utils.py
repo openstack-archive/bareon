@@ -85,7 +85,7 @@ class BlockDeviceMock(object):
             entry = meta[path]
         except KeyError:
             raise OSError(
-                errno.ENOENT, 'FAKE: No such file or directory',  path)
+                errno.ENOENT, 'FAKE: No such file or directory', path)
         return entry
 
 

@@ -155,8 +155,8 @@ class TestSizeUnit(unittest2.TestCase):
     def test_in_unit(self):
         size = block_device.SizeUnit.new_by_string('2.2 YiB')
         for unit, expect in (
-                ('B',   2659636803152184399101952),
-                ('s',   5194603131156610154496),
+                ('B', 2659636803152184399101952),
+                ('s', 5194603131156610154496),
                 ('KiB', 2597301565578305077248),
                 ('MiB', 2536427310135063552),
                 ('GiB', 2476979795053773),

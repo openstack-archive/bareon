@@ -430,8 +430,7 @@ LIST_BLOCK_DEVICES_SAMPLE = [
      'size': 500107862016},
     {'uspec':
         {'DEVLINKS': [
-            '/dev/disk/by-id/by-id/md-fake-raid-uuid',
-            ],
+            '/dev/disk/by-id/by-id/md-fake-raid-uuid', ],
          'ID_SERIAL_SHORT': 'fake_serial_raid',
          'ID_WWN': 'fake_wwn_raid',
          'DEVPATH': '/devices/virtual/block/md123',
@@ -536,8 +535,7 @@ LIST_BLOCK_DEVICES_MPATH = [
      'bspec': {
          'sz': '976773168', 'iomin': '4096', 'size64': '500107862016',
          'ss': '512', 'ioopt': '0', 'alignoff': '0', 'pbsz': '4096',
-         'ra': '256', 'ro': '0', 'maxsect': '1024'
-         },
+         'ra': '256', 'ro': '0', 'maxsect': '1024'},
      'size': 500107862016},
     {'uspec':
         {'DEVLINKS': [
@@ -551,23 +549,20 @@ LIST_BLOCK_DEVICES_MPATH = [
          'ID_MODEL': 'fake_id_model',
          'DEVNAME': '/dev/sdb',
          'MAJOR': '8',
-         'DEVTYPE': 'disk', 'MINOR': '0', 'ID_BUS': 'ata'
-         },
+         'DEVTYPE': 'disk', 'MINOR': '0', 'ID_BUS': 'ata'},
      'startsec': '0',
      'device': '/dev/sdb',
      'espec': {'state': 'running', 'timeout': '30', 'removable': '0'},
      'bspec': {
          'sz': '976773168', 'iomin': '4096', 'size64': '500107862016',
          'ss': '512', 'ioopt': '0', 'alignoff': '0', 'pbsz': '4096',
-         'ra': '256', 'ro': '0', 'maxsect': '1024'
-         },
+         'ra': '256', 'ro': '0', 'maxsect': '1024'},
      'size': 500107862016},
     {'uspec':
         {'DEVLINKS': [
             'disk/by-id/scsi-SATA_VBOX_HARDDISK_VB69050467-b385c7cd',
             '/dev/disk/by-id/wwn-fake_wwn_1',
-            '/dev/disk/by-id/dm-uuid-mpath-fake_wwn_1'
-            ],
+            '/dev/disk/by-id/dm-uuid-mpath-fake_wwn_1'],
          'ID_SERIAL_SHORT': 'fake_serial_1',
          'ID_WWN': 'fake_wwn_1',
          'DEVPATH': '/devices/pci0000:00/0000:00:1f.2/ata1/host0/',
@@ -582,8 +577,7 @@ LIST_BLOCK_DEVICES_MPATH = [
      'bspec': {
          'sz': '976773168', 'iomin': '4096', 'size64': '500107862016',
          'ss': '512', 'ioopt': '0', 'alignoff': '0', 'pbsz': '4096',
-         'ra': '256', 'ro': '0', 'maxsect': '1024'
-         },
+         'ra': '256', 'ro': '0', 'maxsect': '1024'},
      'size': 500107862016},
     {'uspec':
         {'DEVLINKS': [
@@ -596,16 +590,14 @@ LIST_BLOCK_DEVICES_MPATH = [
          'ID_MODEL': 'fake_id_model',
          'DEVNAME': '/dev/sdc',
          'MAJOR': '8',
-         'DEVTYPE': 'disk', 'MINOR': '0', 'ID_BUS': 'ata'
-         },
+         'DEVTYPE': 'disk', 'MINOR': '0', 'ID_BUS': 'ata'},
      'startsec': '0',
      'device': '/dev/sdc',
      'espec': {'state': 'running', 'timeout': '30', 'removable': '0'},
      'bspec': {
          'sz': '976773168', 'iomin': '4096', 'size64': '500107862016',
          'ss': '512', 'ioopt': '0', 'alignoff': '0', 'pbsz': '4096',
-         'ra': '256', 'ro': '0', 'maxsect': '1024'
-         },
+         'ra': '256', 'ro': '0', 'maxsect': '1024'},
      'size': 500107862016},
 ]
 

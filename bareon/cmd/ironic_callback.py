@@ -251,9 +251,9 @@ class _StepMapping(object):
         target = sys.modules[__name__]
         for name in dir(target):
             value = getattr(target, name)
-            if (inspect.isclass(value)
-                    and issubclass(value, base_cls)
-                    and value is not base_cls):
+            if (inspect.isclass(value) and
+                    issubclass(value, base_cls) and
+                    value is not base_cls):
                 self.steps.append(value)
 
         self.name_to_step = {}

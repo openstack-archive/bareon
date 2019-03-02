@@ -447,40 +447,40 @@ def match_device(uspec1, uspec2):
     """
 
     # False if ID_WWN is given and does not match each other
-    if ('ID_WWN' in uspec1 and 'ID_WWN' in uspec2
-            and uspec1['ID_WWN'] != uspec2['ID_WWN']):
+    if ('ID_WWN' in uspec1 and 'ID_WWN' in uspec2 and
+            uspec1['ID_WWN'] != uspec2['ID_WWN']):
         return False
 
     # False if ID_SERIAL_SHORT is given and does not match each other
-    if ('ID_SERIAL_SHORT' in uspec1 and 'ID_SERIAL_SHORT' in uspec2
-            and uspec1['ID_SERIAL_SHORT'] != uspec2['ID_SERIAL_SHORT']):
+    if ('ID_SERIAL_SHORT' in uspec1 and 'ID_SERIAL_SHORT' in uspec2 and
+            uspec1['ID_SERIAL_SHORT'] != uspec2['ID_SERIAL_SHORT']):
         return False
 
     # True if at least one by-id link is the same for both uspecs
-    if ('DEVLINKS' in uspec1 and 'DEVLINKS' in uspec2
-            and any(x.startswith('/dev/disk/by-id') for x in
-                    set(uspec1['DEVLINKS']) & set(uspec2['DEVLINKS']))):
+    if ('DEVLINKS' in uspec1 and 'DEVLINKS' in uspec2 and
+            any(x.startswith('/dev/disk/by-id') for x in
+                set(uspec1['DEVLINKS']) & set(uspec2['DEVLINKS']))):
         return True
 
     # True if ID_WWN is given and matches each other
     # and DEVTYPE is given and is 'disk'
-    if (uspec1.get('ID_WWN') == uspec2.get('ID_WWN') is not None
-            and uspec1.get('DEVTYPE') == uspec2.get('DEVTYPE') == 'disk'):
+    if (uspec1.get('ID_WWN') == uspec2.get('ID_WWN') is not None and
+            uspec1.get('DEVTYPE') == uspec2.get('DEVTYPE') == 'disk'):
         return True
 
     # True if ID_WWN is given and matches each other
     # and DEVTYPE is given and is 'partition'
     # and MINOR is given and matches each other
-    if (uspec1.get('ID_WWN') == uspec2.get('ID_WWN') is not None
-            and uspec1.get('DEVTYPE') == uspec2.get('DEVTYPE') == 'partition'
-            and uspec1.get('MINOR') == uspec2.get('MINOR') is not None):
+    if (uspec1.get('ID_WWN') == uspec2.get('ID_WWN') is not None and
+            uspec1.get('DEVTYPE') == uspec2.get('DEVTYPE') == 'partition' and
+            uspec1.get('MINOR') == uspec2.get('MINOR') is not None):
         return True
 
     # True if ID_SERIAL_SHORT is given and matches each other
     # and DEVTYPE is given and is 'disk'
     if (uspec1.get('ID_SERIAL_SHORT') == uspec2.get('ID_SERIAL_SHORT')
-            is not None
-            and uspec1.get('DEVTYPE') == uspec2.get('DEVTYPE') == 'disk'):
+            is not None and
+            uspec1.get('DEVTYPE') == uspec2.get('DEVTYPE') == 'disk'):
         return True
 
     # True if DEVPATH is given and matches each other
