@@ -1,7 +1,0 @@
-Partition GUID code: EBD0A0A2-B9E5-4433-87C0-68B6B72699C7 (Microsoft basic data)
-Partition unique GUID: E3147173-AD70-443E-8D07-9203C89CA0CC
-First sector: 12339200 (at 5.9 GiB)
-Last sector: 20326399 (at 9.7 GiB)
-Partition size: 7987200 sectors (3.8 GiB)
-Attribute flags: 0000000000000000
-Partition name: 'primary'

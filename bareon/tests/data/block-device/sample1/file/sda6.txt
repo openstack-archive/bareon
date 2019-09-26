@@ -1,1 +1,0 @@
-Linux rev 1.0 ext4 filesystem data, UUID=d625c5de-a050-49a1-bdba-b02bb5cf726e, volume name "home" (needs journal recovery) (extents) (large files) (huge files)\012- data

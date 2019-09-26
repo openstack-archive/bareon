@@ -1,1 +1,0 @@
-x86 boot sector; partition 1: ID=0xee, starthead 0, startsector 1, 23068671 sectors, extended partition table (last)\011, code offset 0x63

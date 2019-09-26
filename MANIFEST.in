@@ -1,6 +1,0 @@
-include LICENSE
-include README.md
-recursive-include doc *
-recursive-include etc/bareon *
-recursive-include cloud-init-templates *
-
